@@ -79,8 +79,9 @@
                     <span><span class="hidden sm:inline">MONSTER: </span><span id="hud-monsters" class="text-emerald-400 font-bold font-pixel text-[10px] sm:text-[11px]">0/10</span></span>
                 </div>
                 <div id="hud-room-badge" class="hidden flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-cyan-500/40">
+                    <span id="hud-mp-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                     <i class="fa-solid fa-users text-cyan-400"></i>
-                    <span><span id="hud-room-code" class="text-cyan-300 font-bold font-pixel text-[10px] sm:text-[11px]">SOLO</span> (<span id="hud-online-count" class="text-emerald-400">1</span>)</span>
+                    <span><span id="hud-room-code" class="text-cyan-300 font-bold font-pixel text-[10px] sm:text-[11px]">PUBLIK</span> (<span id="hud-online-count" class="text-emerald-400">1</span>)</span>
                 </div>
             </div>
 
@@ -1140,13 +1141,20 @@
             // Titik Monster di Mini-map
             monsters.forEach(m => {
                 if (m.defeated) return;
-                ctx.fillStyle = "#f43f5e";
-                ctx.fillRect(mmX + (m.x / MAP_WIDTH) * mmW - 2, mmY + (m.y / MAP_HEIGHT) * mmH - 2, 4, 4);
+                ctx.fillStyle = m.color;
+                ctx.beginPath();
+                ctx.arc(mmX + (m.x / MAP_WIDTH) * mmW, mmY + (m.y / MAP_HEIGHT) * mmH, 3, 0, Math.PI * 2);
+                ctx.fill();
             });
 
-            // Titik Peti di Mini-map
-            ctx.fillStyle = chest.unlocked ? "#fde047" : "#94a3b8";
-            ctx.fillRect(mmX + (chest.x / MAP_WIDTH) * mmW - 3, mmY + (chest.y / MAP_HEIGHT) * mmH - 3, 6, 6);
+            // Titik Pemain Lain (Multiplayer) di Mini-map
+            Object.values(remotePlayers).forEach(rp => {
+                if (rp.mapIndex !== currentMapIndex) return;
+                ctx.fillStyle = "#4ade80";
+                ctx.beginPath();
+                ctx.arc(mmX + (rp.x / MAP_WIDTH) * mmW, mmY + (rp.y / MAP_HEIGHT) * mmH, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
 
             // Titik Pemain di Mini-map
             ctx.fillStyle = "#38bdf8";
@@ -1163,7 +1171,12 @@
 
         // --- MULTIPLAYER SINKRONISASI ---
         async function connectMultiplayerRoom(roomCode) {
-            if (!db || !currentUser || !window._fs) return;
+            const dotEl = document.getElementById('hud-mp-dot');
+            if (!db || !currentUser || !window._fs) {
+                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500";
+                showBanner("Server Multiplayer belum aktif (Cek Anonymous Auth & Authorized Domain di Firebase)!");
+                return;
+            }
             const { doc, setDoc, getDoc, onSnapshot, collection } = window._fs;
             const appId = (typeof __app_id !== 'undefined') ? __app_id : 'petualangan-ulangan';
 
@@ -1180,6 +1193,9 @@
                 }
 
                 mpActive = true;
+                lastSyncTime = 0;
+                syncMultiplayerPosition();
+                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
                 document.getElementById('hud-room-badge').classList.remove('hidden');
                 document.getElementById('hud-room-code').textContent = roomCode;
 
@@ -1212,6 +1228,8 @@
                 }, () => {});
             } catch (err) {
                 console.warn("Gagal gabung room multiplayer:", err);
+                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500";
+                showBanner("Koneksi Multiplayer ditolak Firebase! Cek Rules & Auth.");
             }
         }
 
