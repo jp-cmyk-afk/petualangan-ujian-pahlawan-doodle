@@ -1100,13 +1100,22 @@
                 ctx.fillStyle = "#ffffff";
                 ctx.font = "bold 11px Fredoka, sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText(h.type === "croc" ? "🐊 BUAYA" : "🐅 MACAN", hx, hy + 4);
+                ctx.fillText(h.type === "croc" ? "🐊 BUAYA" : "🐯 MACAN", hx, hy + 4);
             });
 
-            // Pemain Lain (Multiplayer)
+            // Pemain Lain (Multiplayer) dengan interpolasi halus
             Object.values(remotePlayers).forEach(rp => {
                 if (rp.mapIndex !== currentMapIndex) return;
-                drawRPGCharacter(rp.x, rp.y, 34, 34, rp.color || "#a855f7", rp.name || "Teman", (Date.now() * 0.008), 0, 1, rp.jumpZ || 0, 0);
+                if (typeof rp.displayX !== 'number') {
+                    rp.displayX = rp.x;
+                    rp.displayY = rp.y;
+                } else {
+                    rp.displayX += (rp.x - rp.displayX) * 0.28;
+                    rp.displayY += (rp.y - rp.displayY) * 0.28;
+                }
+                const isMoving = Math.hypot(rp.x - rp.displayX, rp.y - rp.displayY) > 1.2;
+                const walkAnim = isMoving ? (Date.now() * 0.015) : 0;
+                drawRPGCharacter(rp.displayX, rp.displayY, 34, 34, rp.color || "#a855f7", rp.name || "Teman", walkAnim, 0, 1, rp.jumpZ || 0, 0);
             });
 
             // Karakter Utama
@@ -1165,6 +1174,7 @@
 
         // --- MULTIPLAYER SINKRONISASI (HTTPS REST API) ---
         const FS_REST_BASE = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
+        const FS_KEY_PARAM = `key=${encodeURIComponent(firebaseConfig.apiKey)}`;
         let pollIntervalId = null;
 
         function toFsFields(obj) {
@@ -1195,46 +1205,62 @@
             const safeRoom = roomCode.replace(/[^A-Z0-9_-]/g, '') || 'PUBLIK';
             currentRoomCode = safeRoom;
 
+            const roomUrl = `${FS_REST_BASE}/rooms/${safeRoom}?${FS_KEY_PARAM}`;
+            const playersColUrl = `${FS_REST_BASE}/room_${safeRoom}_players?pageSize=50&${FS_KEY_PARAM}`;
+
+            mpActive = true;
+            lastSyncTime = 0;
+            document.getElementById('hud-room-badge').classList.remove('hidden');
+            document.getElementById('hud-room-code').textContent = safeRoom;
+
             try {
-                const roomUrl = `${FS_REST_BASE}/artifacts/petualangan-ulangan/public/data/rooms/${safeRoom}`;
-                const res = await fetch(roomUrl);
-                if (res.status === 404) {
-                    await fetch(roomUrl, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(toFsFields({ mapIndex: 0, updatedAt: Date.now() }))
-                    });
-                } else if (res.ok) {
-                    const data = fromFsFields(await res.json());
-                    if (typeof data.mapIndex === 'number' && data.mapIndex !== currentMapIndex && data.mapIndex < MAP_THEMES.length) {
-                        buildMap(data.mapIndex);
-                    }
-                } else {
-                    throw new Error(`HTTP ${res.status}`);
+                // Daftarkan posisi pemain langsung ke Firestore
+                const joinResp = await fetch(`${FS_REST_BASE}/room_${safeRoom}_players/${currentUserId}?${FS_KEY_PARAM}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(toFsFields({
+                        name: player.name,
+                        color: player.color,
+                        x: Math.round(player.x),
+                        y: Math.round(player.y),
+                        jumpZ: Math.round(player.jumpZ),
+                        mapIndex: currentMapIndex,
+                        score,
+                        lastSeen: Date.now()
+                    }))
+                });
+
+                if (!joinResp.ok) {
+                    const errTxt = await joinResp.text();
+                    throw new Error(`HTTP ${joinResp.status}: ${errTxt}`);
                 }
 
-                mpActive = true;
-                lastSyncTime = 0;
-                syncMultiplayerPosition();
-                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
-                document.getElementById('hud-room-badge').classList.remove('hidden');
-                document.getElementById('hud-room-code').textContent = safeRoom;
-
-                if (pollIntervalId) clearInterval(pollIntervalId);
-                pollIntervalId = setInterval(async () => {
-                    if (!mpActive) return;
-                    try {
-                        const [rResp, pResp] = await Promise.all([
-                            fetch(roomUrl),
-                            fetch(`${FS_REST_BASE}/artifacts/petualangan-ulangan/public/data/room_${safeRoom}_players`)
-                        ]);
-                        if (rResp.ok) {
-                            const d = fromFsFields(await rResp.json());
-                            if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
-                                showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
-                                buildMap(d.mapIndex);
-                            }
+                // Cek atau buat dokumen room (opsional, tidak memblokir koneksi jika baru dibuat)
+                fetch(roomUrl).then(async (res) => {
+                    if (res.status === 404) {
+                        await fetch(roomUrl, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(toFsFields({ mapIndex: currentMapIndex, updatedAt: Date.now() }))
+                        });
+                    } else if (res.ok) {
+                        const data = fromFsFields(await res.json());
+                        if (typeof data.mapIndex === 'number' && data.mapIndex > currentMapIndex && data.mapIndex < MAP_THEMES.length) {
+                            buildMap(data.mapIndex);
                         }
+                    }
+                }).catch(() => {});
+
+                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
+
+                let isPolling = false;
+                let pollTick = 0;
+                const pollNow = async () => {
+                    if (!mpActive || isPolling) return;
+                    isPolling = true;
+                    pollTick++;
+                    try {
+                        const pResp = await fetch(playersColUrl);
                         if (pResp.ok) {
                             const listData = await pResp.json();
                             const docs = listData.documents || [];
@@ -1246,28 +1272,51 @@
                                 if (docId === currentUserId) return;
                                 const pData = fromFsFields(docItem);
                                 if (now - (pData.lastSeen || 0) < 20000) {
+                                    const prev = remotePlayers[docId];
+                                    pData.displayX = prev && typeof prev.displayX === 'number' ? prev.displayX : pData.x;
+                                    pData.displayY = prev && typeof prev.displayY === 'number' ? prev.displayY : pData.y;
                                     nextRemotes[docId] = pData;
                                     count++;
                                 }
                             });
                             remotePlayers = nextRemotes;
                             document.getElementById('hud-online-count').textContent = count;
+                            if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
                         }
-                    } catch (e) {}
-                }, 850);
+
+                        if (pollTick % 4 === 0) {
+                            const rResp = await fetch(roomUrl);
+                            if (rResp.ok) {
+                                const d = fromFsFields(await rResp.json());
+                                if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
+                                    showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
+                                    buildMap(d.mapIndex);
+                                }
+                            }
+                        }
+                    } catch (e) {} finally {
+                        isPolling = false;
+                    }
+                };
+
+                await pollNow();
+                if (pollIntervalId) clearInterval(pollIntervalId);
+                pollIntervalId = setInterval(pollNow, 250);
             } catch (err) {
-                console.warn("Mencoba sambung ulang mabar:", err);
-                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+                console.warn("Gagal sambung mabar:", err);
+                mpActive = false;
+                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500 animate-pulse";
+                showBanner(`Koneksi Server Gagal: ${err.message.slice(0, 65)}`);
                 setTimeout(() => connectMultiplayerRoom(safeRoom), 3000);
             }
         }
 
-        function syncMultiplayerPosition() {
+        function syncMultiplayerPosition(force = false) {
             if (!mpActive) return;
             const now = Date.now();
-            if (now - lastSyncTime < 450) return;
+            if (!force && now - lastSyncTime < 180) return;
             lastSyncTime = now;
-            const pUrl = `${FS_REST_BASE}/artifacts/petualangan-ulangan/public/data/room_${currentRoomCode}_players/${currentUserId}`;
+            const pUrl = `${FS_REST_BASE}/room_${currentRoomCode}_players/${currentUserId}?${FS_KEY_PARAM}`;
             fetch(pUrl, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -1285,12 +1334,12 @@
         }
 
         function syncMultiplayerProgress() {
-            syncMultiplayerPosition();
+            syncMultiplayerPosition(true);
         }
 
         function syncMultiplayerMapChange(nextIdx) {
             if (!mpActive) return;
-            const roomUrl = `${FS_REST_BASE}/artifacts/petualangan-ulangan/public/data/rooms/${currentRoomCode}`;
+            const roomUrl = `${FS_REST_BASE}/rooms/${currentRoomCode}?${FS_KEY_PARAM}`;
             fetch(roomUrl, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
