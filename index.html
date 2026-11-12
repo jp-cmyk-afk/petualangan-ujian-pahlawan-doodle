@@ -272,12 +272,16 @@
         async function initFirebaseMP() {
             try {
                 const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-                const { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                const { initializeFirestore, getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
 
                 window._fs = { doc, setDoc, getDoc, onSnapshot, collection, updateDoc };
                 const cfg = (typeof __firebase_config !== 'undefined') ? JSON.parse(__firebase_config) : firebaseConfig;
                 const app = getApps().length ? getApps()[0] : initializeApp(cfg);
-                db = getFirestore(app);
+                try {
+                    db = initializeFirestore(app, { experimentalForceLongPolling: true });
+                } catch (e) {
+                    db = getFirestore(app);
+                }
             } catch (err) {
                 console.warn("Mode Offline / Solo aktif:", err);
                 db = null;
@@ -420,6 +424,8 @@
 
         // --- STATE GAME ---
         let gameRunning = false;
+        let loopStarted = false;
+        let lastFrameTime = performance.now();
         let currentMapIndex = 0;
         let score = 0;
         let defeatedCount = 0;
@@ -677,16 +683,16 @@
             }
         }
 
-        function update() {
+        function update(dt = 1) {
             if (!gameRunning) return;
             resizeCanvas();
 
-            if (player.invulnTimer > 0) player.invulnTimer--;
+            if (player.invulnTimer > 0) player.invulnTimer = Math.max(0, player.invulnTimer - dt);
 
-            // Lompatan
+            // Lompatan berbasis Delta-Time (konsisten di 60Hz, 90Hz, maupun 120Hz)
             if (player.isJumping) {
-                player.jumpZ += player.jumpVel;
-                player.jumpVel -= 0.58;
+                player.jumpZ += player.jumpVel * dt;
+                player.jumpVel -= 0.58 * dt;
                 if (player.jumpZ <= 0) {
                     player.jumpZ = 0;
                     player.jumpVel = 0;
@@ -708,10 +714,11 @@
                     dy /= len;
                     player.dirX = dx;
                     player.dirY = dy;
-                    player.walkCycle += 0.24;
+                    player.walkCycle += 0.24 * dt;
 
-                    const nextX = Math.max(40, Math.min(MAP_WIDTH - 40 - player.width, player.x + dx * player.speed));
-                    const nextY = Math.max(40, Math.min(MAP_HEIGHT - 40 - player.height, player.y + dy * player.speed));
+                    const step = player.speed * dt;
+                    const nextX = Math.max(40, Math.min(MAP_WIDTH - 40 - player.width, player.x + dx * step));
+                    const nextY = Math.max(40, Math.min(MAP_HEIGHT - 40 - player.height, player.y + dy * step));
 
                     const canPassObstacles = player.jumpZ > 14;
                     let blockedX = false, blockedY = false;
@@ -726,31 +733,35 @@
                 }
             }
 
-            // Update Monster Kuis
+            // Update Monster Kuis (Kecepatan stabil berbasis dt)
             monsters.forEach((m, idx) => {
                 if (m.defeated) return;
-                m.x += m.vx;
-                m.y += m.vy;
-                if (m.x < 70 || m.x > MAP_WIDTH - 110) m.vx *= -1;
-                if (m.y < 180 || m.y > MAP_HEIGHT - 120) m.vy *= -1;
+                m.x += m.vx * dt;
+                m.y += m.vy * dt;
+                if (m.x < 70) { m.x = 70; m.vx = Math.abs(m.vx); }
+                if (m.x > MAP_WIDTH - 110) { m.x = MAP_WIDTH - 110; m.vx = -Math.abs(m.vx); }
+                if (m.y < 180) { m.y = 180; m.vy = Math.abs(m.vy); }
+                if (m.y > MAP_HEIGHT - 120) { m.y = MAP_HEIGHT - 120; m.vy = -Math.abs(m.vy); }
 
                 if (activeQuizMonsterIndex === -1 && player.jumpZ < 16 && rectOverlap(player, m)) {
                     openQuizModal(m, idx);
                 }
             });
 
-            // Update Bahaya (Buaya / Macan)
+            // Update Bahaya (Buaya / Macan) berbasis dt
             hazards.forEach(h => {
                 const dist = Math.hypot(player.x - h.x, player.y - h.y);
                 if (dist < 280 && player.invulnTimer === 0) {
                     const ang = Math.atan2(player.y - h.y, player.x - h.x);
-                    h.x += Math.cos(ang) * 2.6;
-                    h.y += Math.sin(ang) * 2.6;
+                    h.x += Math.cos(ang) * 2.5 * dt;
+                    h.y += Math.sin(ang) * 2.5 * dt;
                 } else {
-                    h.x += h.vx;
-                    h.y += h.vy;
-                    if (h.x < 80 || h.x > MAP_WIDTH - 130) h.vx *= -1;
-                    if (h.y < 200 || h.y > MAP_HEIGHT - 140) h.vy *= -1;
+                    h.x += h.vx * dt;
+                    h.y += h.vy * dt;
+                    if (h.x < 80) { h.x = 80; h.vx = Math.abs(h.vx); }
+                    if (h.x > MAP_WIDTH - 130) { h.x = MAP_WIDTH - 130; h.vx = -Math.abs(h.vx); }
+                    if (h.y < 200) { h.y = 200; h.vy = Math.abs(h.vy); }
+                    if (h.y > MAP_HEIGHT - 140) { h.y = MAP_HEIGHT - 140; h.vy = -Math.abs(h.vy); }
                 }
 
                 if (activeQuizMonsterIndex === -1 && player.invulnTimer === 0 && player.jumpZ < 18 && rectOverlap(player, h)) {
@@ -766,7 +777,7 @@
             if (chest.unlocked) {
                 const dChest = Math.hypot((player.x + 17) - (chest.x + 42), (player.y + 17) - (chest.y + 33));
                 if (dChest < 140) {
-                    chestOpenAnim = Math.min(1, chestOpenAnim + 0.08);
+                    chestOpenAnim = Math.min(1, chestOpenAnim + 0.08 * dt);
                 }
                 if (rectOverlap(player, chest) && activeQuizMonsterIndex === -1) {
                     sfx.chest();
@@ -1152,8 +1163,11 @@
             ctx.fill();
         }
 
-        function gameLoop() {
-            update();
+        function gameLoop(now = performance.now()) {
+            const rawDt = (now - lastFrameTime) / (1000 / 60);
+            lastFrameTime = now;
+            const dt = Math.min(Math.max(rawDt, 0.25), 2.0);
+            update(dt);
             render();
             requestAnimationFrame(gameLoop);
         }
@@ -1219,8 +1233,9 @@
                 }, () => {});
             } catch (err) {
                 console.warn("Gagal gabung room multiplayer:", err);
-                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500";
-                showBanner(`Error Firestore (${err.code || 'ditolak'}): Klik Publish di tab Security Rules!`);
+                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+                showBanner("Mencoba menyambungkan ulang ke server mabar...");
+                setTimeout(() => connectMultiplayerRoom(safeRoom), 3500);
             }
         }
 
@@ -1321,8 +1336,10 @@
 
             resizeCanvas();
             buildMap(0);
-            if (!gameRunning) {
-                gameRunning = true;
+            gameRunning = true;
+            lastFrameTime = performance.now();
+            if (!loopStarted) {
+                loopStarted = true;
                 requestAnimationFrame(gameLoop);
             }
 
