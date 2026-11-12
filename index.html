@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Petualangan 5 Peta Legenda Kelas 2 SD</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Press+Start+2P&display=swap');
+        
+        body {
+            font-family: 'Fredoka', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            min-height: 100svh;
+            overflow-y: auto !important;
+        }
+        .font-pixel {
+            font-family: 'Press Start 2P', cursive;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+        .game-hud { flex-wrap: wrap; gap: 8px; }
+        .game-frame { flex-shrink: 0; aspect-ratio: auto; height: clamp(500px, 75svh, 850px); }
+        @media (max-width: 639px) {
+            .game-frame { height: max(480px, 70svh); }
+            .game-hud .font-pixel { font-size: 10px; }
+            #overlay-start h1 { font-size: 15px; line-height: 1.5; }
+        }
+        @media (pointer: coarse) {
+            .mobile-controls { display: grid !important; }
+            #jump-hint, .keyboard-hint { display: none !important; }
+        }
+        .touch-btn {
+            touch-action: none;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(6px);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+        }
+        .touch-btn:active {
+            background: rgba(245, 158, 11, 0.5);
+        }
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        .pulse-glow {
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-2 md:p-4">
+
+    <!-- Game Container Wrapper -->
+    <div class="relative w-full max-w-6xl flex flex-col items-center">
+        
+        <!-- Top HUD Bar -->
+        <div class="game-hud w-full glass-panel rounded-2xl p-2.5 sm:p-3 mb-2 flex items-center justify-between text-xs sm:text-sm font-semibold shadow-2xl border border-slate-700/60">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-amber-500/30">
+                    <i class="fa-solid fa-trophy text-amber-400 text-sm"></i>
+                    <span>SKOR: <span id="hud-score" class="text-amber-400 font-bold font-pixel">0</span></span>
+                </div>
+                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-emerald-500/30">
+                    <i class="fa-solid fa-ghost text-emerald-400 text-sm"></i>
+                    <span>MONSTER: <span id="hud-chests" class="text-emerald-400 font-bold font-pixel">0/10</span></span>
+                </div>
+                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-purple-500/30">
+                    <i class="fa-solid fa-map text-purple-400 text-sm"></i>
+                    <span>PETA: <span id="hud-map" class="text-purple-400 font-bold font-pixel">LEVEL 1</span></span>
+                </div>
+                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-indigo-500/30">
+                    <i class="fa-solid fa-users text-indigo-400 text-sm"></i>
+                    <span>ONLINE: <span id="hud-online" class="text-indigo-400 font-bold font-pixel">1</span></span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-cyan-500/30">
+                    <i class="fa-solid fa-stopwatch text-cyan-400 text-sm"></i>
+                    <span id="hud-timer" class="text-cyan-400 font-bold font-pixel">00:00</span>
+                </div>
+                <button id="btn-restart" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-xl transition-all shadow-md active:scale-95 text-xs font-bold flex items-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span class="hidden sm:inline">Reset</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Status & Alert Bar -->
+        <div id="status-bar" class="w-full text-xs text-slate-300 mb-2 flex items-center justify-between px-1">
+            <span id="multiplayer-status">Masukkan nama lalu mulai petualanganmu!</span>
+            <span id="map-theme-desc" class="text-amber-300 font-semibold">Map 1: Padang Rerumputan (Slime)</span>
+        </div>
+
+        <!-- Main Canvas Frame -->
+        <div class="game-frame relative w-full bg-slate-900 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl flex items-center justify-center">
+            <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+            <!-- Hazard / Event Toast Banner -->
+            <div id="event-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 bg-rose-600/95 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-2xl border-2 border-rose-300 z-20 text-center">
+                Peringatan!
+            </div>
+
+            <!-- Locked Warning Banner -->
+            <div id="lock-warning" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-2xl border-2 border-amber-300 flex items-center space-x-2 animate-bounce z-10">
+                <i class="fa-solid fa-lock text-base"></i>
+                <span>Kalahkan monster dengan menjawab kuis!</span>
+            </div>
+
+            <!-- Jump Button Prompt Hint -->
+            <div id="jump-hint" class="hidden sm:block absolute top-4 right-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700 text-[11px] text-amber-300 font-semibold shadow-lg z-10">
+                Tekan <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-white font-bold">SPACE</kbd> untuk Loncat!
+            </div>
+
+            <!-- Start Game Screen Overlay -->
+            <div id="overlay-start" class="absolute inset-0 glass-panel flex flex-col items-center justify-center p-6 text-center z-20 overflow-y-auto">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-amber-500/30 rounded-3xl flex items-center justify-center mb-3 border-2 border-amber-400/50 pulse-glow">
+                    <i class="fa-solid fa-dragon text-amber-400 text-3xl sm:text-4xl"></i>
+                </div>
+                <h1 class="text-xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-yellow-300 mb-2 font-pixel">PETUALANGAN 5 PETA LEGENDA</h1>
+                <p class="text-amber-100/90 text-xs sm:text-sm max-w-xl mb-4 leading-relaxed font-medium">
+                    Jelajahi 5 Dunia Unik: <span class="text-emerald-400 font-bold">1. Rumput (Slime)</span>, <span class="text-amber-400 font-bold">2. Rawa (Katak & Buaya)</span>, <span class="text-purple-400 font-bold">3. Makam (Hantu & Jebakan)</span>, <span class="text-orange-400 font-bold">4. Hutan (Kelelawar & Macan)</span>, dan <span class="text-cyan-400 font-bold">5. Labirin Gelap (Mumi)</span>! Kalahkan 10 Monster per Map (1.000 Poin) untuk membuka Portal!
+                </p>
+                
+                <div class="space-y-3 w-full max-w-xs">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1 text-left">Nama Petualang:</label>
+                        <input type="text" id="player-name-input" placeholder="Ketik nama kamu..." maxlength="12" class="w-full px-4 py-2.5 bg-slate-900 border-2 border-slate-700 rounded-xl text-center text-white focus:outline-none focus:border-amber-400 font-bold transition-all text-sm placeholder:text-slate-500">
+                    </div>
+
+                    <button id="btn-start" type="button" class="w-full py-3.5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-base rounded-xl shadow-xl shadow-orange-500/40 transition-all transform active:scale-95 flex items-center justify-center space-x-2 cursor-pointer">
+                        <span>MASUK KE MAP</span>
+                        <i class="fa-solid fa-gamepad"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Game Over / Victory Overlay -->
+            <div id="overlay-end" class="hidden absolute inset-0 glass-panel flex flex-col items-center justify-center p-6 text-center z-30">
+                <h2 class="text-xl sm:text-3xl font-black text-amber-400 mb-1 font-pixel">SELAMAT! 5 PETA TAMAT!</h2>
+                <p class="text-slate-300 text-xs sm:text-sm mb-3">Kamu telah menaklukkan seluruh monster di 5 dunia legenda!</p>
+                
+                <div class="grid grid-cols-2 gap-3 w-full max-w-xs mb-4">
+                    <div class="bg-slate-900/90 border border-slate-700 p-2.5 rounded-xl">
+                        <div class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Skor</div>
+                        <div id="end-score" class="text-lg sm:text-xl font-black text-amber-400 font-pixel">0</div>
+                    </div>
+                    <div class="bg-slate-900/90 border border-slate-700 p-2.5 rounded-xl">
+                        <div class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Waktu</div>
+                        <div id="end-time" class="text-lg sm:text-xl font-black text-cyan-400 font-pixel">00:00</div>
+                    </div>
+                </div>
+
+                <button id="btn-play-again" type="button" class="w-full max-w-xs py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center justify-center space-x-2 cursor-pointer">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>MAIN DARI MAP 1</span>
+                </button>
+            </div>
+
+            <!-- Quiz Modal Popup -->
+            <div id="quiz-modal" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-40">
+                <div class="glass-panel border-2 border-amber-400/60 rounded-2xl w-full max-w-lg p-5 sm:p-6 text-left shadow-2xl relative">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-3">
+                        <span id="quiz-subject-badge" class="text-xs font-extrabold px-3 py-1 bg-amber-500/40 text-amber-300 rounded-lg border border-amber-500/40 flex items-center gap-1.5">
+                            <i class="fa-solid fa-book-open"></i> KUIS KELAS 2 SD
+                        </span>
+                        <span id="quiz-reward" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">+100 Poin</span>
+                    </div>
+                    <h3 id="quiz-question" class="text-sm sm:text-base font-bold text-slate-100 mb-4 leading-relaxed">
+                        Pertanyaan kuis...
+                    </h3>
+                    <div id="quiz-options" class="space-y-2.5 mb-4"></div>
+                    <div id="quiz-feedback" class="hidden p-3 rounded-xl text-center text-xs font-bold"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Virtual Touch Controls (Mobile Only) -->
+        <div class="mobile-controls w-full mt-2 grid grid-cols-4 gap-2 sm:hidden px-4 max-w-sm">
+            <div></div>
+            <button id="btn-up" type="button" class="touch-btn p-3.5 rounded-2xl flex items-center justify-center text-xl text-amber-400 active:scale-95">
+                <i class="fa-solid fa-arrow-up"></i>
+            </button>
+            <div></div>
+            <button id="btn-jump" type="button" class="touch-btn p-3.5 rounded-2xl flex items-center justify-center text-sm font-extrabold text-amber-300 bg-amber-500/40 active:scale-95 border-amber-400/50">
+                LONCAT
+            </button>
+
+            <button id="btn-left" type="button" class="touch-btn p-3.5 rounded-2xl flex items-center justify-center text-xl text-amber-400 active:scale-95">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <button id="btn-down" type="button" class="touch-btn p-3.5 rounded-2xl flex items-center justify-center text-xl text-amber-400 active:scale-95">
+                <i class="fa-solid fa-arrow-down"></i>
+            </button>
+            <button id="btn-right" type="button" class="touch-btn p-3.5 rounded-2xl flex items-center justify-center text-xl text-amber-400 active:scale-95">
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <div></div>
+        </div>
+
+        <!-- PC Keyboard Controls Hint -->
+        <div class="keyboard-hint hidden sm:flex items-center justify-center space-x-6 mt-2 text-xs text-slate-400">
+            <span class="flex items-center gap-1.5"><kbd class="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200">W A S D</kbd> / <kbd class="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200">Panah</kbd> : Bergerak</span>
+            <span class="flex items-center gap-1.5"><kbd class="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200">SPACEBAR</kbd> : Loncat</span>
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-compass text-amber-400"></i> Mini-map di pojok kanan bawah</span>
+        </div>
+    </div>
+
+    <script>
+        // --- SOUND EFFECTS (WEB AUDIO API) ---
+        const AudioFX = {
+            ctx: null,
+            init() {
+                try {
+                    if (!this.ctx) {
+                        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        if (AudioCtx) this.ctx = new AudioCtx();
+                    }
+                    if (this.ctx && this.ctx.state === 'suspended') {
+                        this.ctx.resume();
+                    }
+                } catch (e) {}
+            },
+            playTone(freq, type, duration, gainVal = 0.08) {
+                try {
+                    if (!this.ctx) return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            },
+            jump() {
+                this.init();
+                this.playTone(300, 'sine', 0.15);
+            },
+            encounter() {
+                this.init();
+                this.playTone(360, 'sine', 0.1);
+                setTimeout(() => this.playTone(540, 'sine', 0.15), 80);
+            },
+            correct() {
+                this.init();
+                this.playTone(523.25, 'triangle', 0.1);
+                setTimeout(() => this.playTone(659.25, 'triangle', 0.1), 90);
+                setTimeout(() => this.playTone(783.99, 'triangle', 0.2), 180);
+            },
+            wrong() {
+                this.init();
+                this.playTone(220, 'sawtooth', 0.15);
+                setTimeout(() => this.playTone(170, 'sawtooth', 0.25), 140);
+            },
+            portal() {
+                this.init();
+                [440, 554, 659, 880].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 'sine', 0.18), i * 80);
+                });
+            },
+            victory() {
+                this.init();
+                [523, 659, 783, 1046].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 'sine', 0.2), i * 110);
+                });
+            }
+        };
+
+        // --- BANK SOAL LENGKAP KELAS 2 SD ---
+        const QUESTION_BANK = [
+            // Pendidikan Pancasila
+            { subject: "Pendidikan Pancasila", q: "Merapikan tempat tidur sendiri setelah bangun adalah contoh...", options: ["Aturan di rumah", "Aturan di jalan raya", "Aturan di rumah sakit"], answer: 0, points: 100 },
+            { subject: "Pendidikan Pancasila", q: "Mendapatkan kasih sayang dan rasa aman dari orang tua adalah...", options: ["Kewajiban anak", "Hak anak", "Hukuman anak"], answer: 1, points: 100 },
+            { subject: "Pendidikan Pancasila", q: "Mendengarkan penjelasan guru saat pelajaran di kelas adalah...", options: ["Kewajiban siswa", "Hak siswa", "Larangan di sekolah"], answer: 0, points: 100 },
+            { subject: "Pendidikan Pancasila", q: "Sesuatu yang harus kita lakukan dengan penuh tanggung jawab disebut...", options: ["Hak", "Kewajiban", "Hadiah"], answer: 1, points: 100 },
+            { subject: "Pendidikan Pancasila", q: "Sesuatu yang layak kita terima setelah melaksanakan kewajiban disebut...", options: ["Aturan", "Hukuman", "Hak"], answer: 2, points: 100 },
+
+            // Matematika
+            { subject: "Matematika", q: "23 + 15 = ...", options: ["38", "35", "48"], answer: 0, points: 100 },
+            { subject: "Matematika", q: "47 + 18 = ...", options: ["55", "75", "65"], answer: 2, points: 100 },
+            { subject: "Matematika", q: "65 - 23 = ...", options: ["42", "32", "44"], answer: 0, points: 100 },
+            { subject: "Matematika", q: "80 - 35 = ...", options: ["55", "45", "35"], answer: 1, points: 100 },
+            { subject: "Matematika", q: "Lanjutkan pola bilangan: 5, 10, 15, 20, ...", options: ["24", "30", "25"], answer: 2, points: 100 },
+            { subject: "Matematika", q: "Bentuk perkalian dari penjumlahan 4 + 4 + 4 adalah...", options: ["3 x 4", "4 x 4", "2 x 4"], answer: 0, points: 100 },
+
+            // Bahasa Indonesia
+            { subject: "Bahasa Indonesia", q: "Penulisan huruf kapital yang tepat untuk nama orang adalah...", options: ["budi santoso", "Budi Santoso", "budi Santoso"], answer: 1, points: 100 },
+            { subject: "Bahasa Indonesia", q: "Tanda baca yang digunakan di akhir kalimat tanya adalah...", options: ["Tanda seru (!)", "Tanda tanya (?)", "Tanda titik (.)"], answer: 1, points: 100 },
+            { subject: "Bahasa Indonesia", q: "Kata yang tepat saat meminta bantuan kepada teman adalah...", options: ["Cepat!", "Tolong", "Maaf"], answer: 1, points: 100 },
+            { subject: "Bahasa Indonesia", q: "Lawan kata (antonim) dari kata 'rajin' adalah...", options: ["Pintar", "Malas", "Cepat"], answer: 1, points: 100 },
+            { subject: "Bahasa Indonesia", q: "'Di mana rumahmu?' adalah contoh kalimat...", options: ["Berita", "Perintah", "Tanya"], answer: 2, points: 100 },
+
+            // Seni Rupa
+            { subject: "Seni Rupa", q: "Yang termasuk warna primer (warna dasar) adalah...", options: ["Merah, kuning, biru", "Hijau, ungu, oranye", "Hitam, putih, abu-abu"], answer: 0, points: 100 },
+            { subject: "Seni Rupa", q: "Campuran warna merah dan kuning akan menghasilkan warna...", options: ["Hijau", "Ungu", "Oranye / Jingga"], answer: 2, points: 100 },
+            { subject: "Seni Rupa", q: "Campuran warna biru dan kuning akan menghasilkan warna...", options: ["Hijau", "Cokelat", "Merah muda"], answer: 0, points: 100 },
+            { subject: "Seni Rupa", q: "Karya seni menempel potongan kertas atau daun kering pada gambar disebut...", options: ["Kolase", "Patung", "Lukisan"], answer: 0, points: 100 },
+
+            // Bahasa Jawa (Basa Krama, Pandawa & Punakawan)
+            { subject: "Bahasa Jawa", q: "Basa kramane tembung 'mangan' yaiku...", options: ["Sare", "Dhahar", "Tindak"], answer: 1, points: 100 },
+            { subject: "Bahasa Jawa", q: "Basa kramane tembung 'turu' yaiku...", options: ["Sare", "Mlampah", "Siram"], answer: 0, points: 100 },
+            { subject: "Bahasa Jawa", q: "Basa kramane tembung 'lunga' kanggo wong tuwa yaiku...", options: ["Wangsul", "Tindak", "Kondur"], answer: 1, points: 100 },
+            { subject: "Bahasa Jawa", q: "Cacahe satriya Pandhawa iku ana...", options: ["4 (papat)", "5 (lima)", "6 (enem)"], answer: 1, points: 100 },
+            { subject: "Bahasa Jawa", q: "Pembarepe (anak pertama) Pandhawa Lima yaiku...", options: ["Puntadewa / Yudhistira", "Werkudara / Bima", "Janaka / Arjuna"], answer: 0, points: 100 },
+            { subject: "Bahasa Jawa", q: "Satriya Pandhawa sing awake gedhe dhuwur lan gagah prakosa yaiku...", options: ["Nakula", "Werkudara / Bima", "Sadewa"], answer: 1, points: 100 },
+            { subject: "Bahasa Jawa", q: "Punakawan iku cacahe ana 4 serangkai, yaiku Semar, Gareng, Petruk, lan...", options: ["Bagong", "Anoman", "Gatotkaca"], answer: 0, points: 100 },
+            { subject: "Bahasa Jawa", q: "Bapake para Punakawan (Gareng, Petruk, Bagong) yaiku...", options: ["Ki Lurah Semar", "Prabu Kresna", "Raden Arjuna"], answer: 0, points: 100 },
+
+            // PJOK (Gerak Dasar)
+            { subject: "PJOK", q: "Gerak berpindah tempat seperti berjalan, berlari, dan melompat disebut gerak...", options: ["Lokomotor", "Non-lokomotor", "Manipulatif"], answer: 0, points: 100 },
+            { subject: "PJOK", q: "Gerak menekuk lutut dan memutar lengan di tempat disebut gerak...", options: ["Lokomotor", "Non-lokomotor", "Manipulatif"], answer: 1, points: 100 },
+            { subject: "PJOK", q: "Gerak melempar, menangkap, dan menendang bola termasuk gerak...", options: ["Lokomotor", "Non-lokomotor", "Manipulatif"], answer: 2, points: 100 },
+            { subject: "PJOK", q: "Sebelum melakukan olahraga berat, kita harus melakukan...", options: ["Pendinginan", "Pemanasan", "Tidur"], answer: 1, points: 100 },
+
+            // Pendidikan Agama Islam (PAI)
+            { subject: "Pendidikan Agama Islam", q: "Rukun Islam yang kedua adalah...", options: ["Mengucap syahadat", "Mendirikan sholat", "Membayar zakat"], answer: 1, points: 100 },
+            { subject: "Pendidikan Agama Islam", q: "Sebelum melaksanakan sholat, umat Islam wajib bersuci dengan cara...", options: ["Mandi", "Wudhu", "Mencuci tangan saja"], answer: 1, points: 100 },
+            { subject: "Pendidikan Agama Islam", q: "Jumlah rakaat sholat Maghrib adalah...", options: ["2 rakaat", "3 rakaat", "4 rakaat"], answer: 1, points: 100 },
+            { subject: "Pendidikan Agama Islam", q: "Ketika mendapat nikmat atau selesai melakukan kebaikan kita mengucapkan...", options: ["Subhanallah", "Alhamdulillah", "Astaghfirullah"], answer: 1, points: 100 },
+            { subject: "Pendidikan Agama Islam", q: "Nabi Muhammad SAW memiliki sifat Al-Amin yang artinya...", options: ["Dapat dipercaya", "Cerdas", "Pemberani"], answer: 0, points: 100 }
+        ];
+
+        // --- KONFIGURASI DUNIA & VARIABEL GLOBAL ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const MAP_WIDTH = 3200;
+        const MAP_HEIGHT = 2400;
+        const TILE_SIZE = 50;
+
+        let gameRunning = false;
+        let isLocked = false;
+        let activeMonster = null;
+        let activeMonsterIndex = -1;
+
+        let currentMapLevel = 1;
+        const MAX_MAPS = 5;
+        const TARGET_CHESTS_PER_MAP = 10;
+
+        let score = 0;
+        let mapChestsCompleted = 0;
+        let startTime = 0;
+        let elapsedTime = 0;
+        let timerInterval = null;
+
+        let playerName = "Petualang";
+        let playerColor = "#2563eb";
+        const PLAYER_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#db2777", "#eab308"];
+
+        // Array Objek Dunia (Dideklarasikan secara global agar aman dari ReferenceError)
+        let obstacles = [];
+        let lakeAreas = [];
+        let chests = []; // Berisi monster kuis sesuai tema map
+        let flowers = [];
+        let crocodiles = []; // Map 2: Buaya keliling map
+        let traps = []; // Map 3: Jebakan bunga makam
+        let canopies = []; // Map 4: Kanopi pohon tinggi
+        let tigers = []; // Map 4: 3 Macan patroli
+        let portal = { active: false, x: MAP_WIDTH / 2 - 40, y: MAP_HEIGHT / 2 - 40, width: 80, height: 80 };
+
+        const camera = {
+            x: 0,
+            y: 0,
+            viewportWidth: 800,
+            viewportHeight: 600,
+            zoom: 1.15
+        };
+
+        const keys = { Up: false, Down: false, Left: false, Right: false };
+
+        const localPlayer = {
+            x: MAP_WIDTH / 2,
+            y: MAP_HEIGHT / 2,
+            width: 34,
+            height: 40,
+            speed: 6.0,
+            dirX: 0,
+            dirY: 1,
+            jumpZ: 0,
+            jumpVel: 0,
+            isJumping: false,
+            knockbackX: 0,
+            knockbackY: 0,
+            tigerDamageTimer: 0,
+            invulnerableUntil: 0 // Masa kebal (ms) agar tidak spawn-kill
+        };
+
+        // --- FUNGSI BANTU ---
+        function checkCollision(r1, r2) {
+            return r1.x < r2.x + r2.width &&
+                   r1.x + r1.width > r2.x &&
+                   r1.y < r2.y + r2.height &&
+                   r1.y + r1.height > r2.y;
+        }
+
+        function isPointInWater(x, y) {
+            return lakeAreas.some(lake => {
+                const dx = (x - lake.x) / lake.radiusX;
+                const dy = (y - lake.y) / lake.radiusY;
+                return (dx * dx + dy * dy) <= 1.0;
+            });
+        }
+
+        function showToast(msg, bgClass = "bg-rose-600/95") {
+            const banner = document.getElementById('event-banner');
+            banner.textContent = msg;
+            banner.className = `absolute top-14 left-1/2 -translate-x-1/2 ${bgClass} text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-2xl border-2 border-white/40 z-20 text-center`;
+            banner.classList.remove('hidden');
+            clearTimeout(banner._hideTimer);
+            banner._hideTimer = setTimeout(() => {
+                banner.classList.add('hidden');
+            }, 2600);
+        }
+
+        function centerCamera() {
+            camera.x = Math.max(0, Math.min(MAP_WIDTH - camera.viewportWidth,
+                localPlayer.x + localPlayer.width / 2 - camera.viewportWidth / 2));
+            camera.y = Math.max(0, Math.min(MAP_HEIGHT - camera.viewportHeight,
+                localPlayer.y + localPlayer.height / 2 - camera.viewportHeight / 2));
+        }
+
+        function resizeCanvas() {
+            const bounds = canvas.getBoundingClientRect();
+            if (bounds.width > 0 && bounds.height > 0) {
+                canvas.width = Math.round(bounds.width);
+                canvas.height = Math.round(bounds.height);
+                camera.zoom = bounds.width < 640 ? 0.85 : 1.15;
+                camera.viewportWidth = canvas.width / camera.zoom;
+                camera.viewportHeight = canvas.height / camera.zoom;
+                centerCamera();
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- SPAWN MONSTER KUIS SESUAI TEMA MAP ---
+        function spawnSingleMonster(id) {
+            let valid = false, cx = 0, cy = 0, tries = 0;
+            while (!valid && tries < 150) {
+                tries++;
+                cx = Math.floor(Math.random() * (MAP_WIDTH - 360)) + 180;
+                cy = Math.floor(Math.random() * (MAP_HEIGHT - 360)) + 180;
+                // Jauhkan minimal 280px dari pemain dan titik tengah peta
+                if (Math.hypot(cx - localPlayer.x, cy - localPlayer.y) < 280) continue;
+                if (Math.hypot(cx - MAP_WIDTH / 2, cy - MAP_HEIGHT / 2) < 250) continue;
+                const testBox = { x: cx, y: cy, width: 38, height: 38 };
+                if (!obstacles.some(o => checkCollision(testBox, o)) && !isPointInWater(cx + 19, cy + 19)) {
+                    valid = true;
+                }
+            }
+
+            const monsterTypes = {
+                1: { name: "Slime Rumput", color: "#22c55e" },
+                2: { name: "Katak Rawa", color: "#a855f7" },
+                3: { name: "Hantu Makam", color: "#f1f5f9" },
+                4: { name: "Kelelawar Hutan", color: "#475569" },
+                5: { name: "Mumi Labirin", color: "#d97706" }
+            };
+            const mInfo = monsterTypes[currentMapLevel] || monsterTypes[1];
+
+            chests.push({
+                id: id,
+                x: cx,
+                y: cy,
+                width: 38,
+                height: 38,
+                vx: (Math.random() > 0.5 ? 1 : -1) * (1.3 + Math.random()),
+                vy: (Math.random() > 0.5 ? 1 : -1) * (1.3 + Math.random()),
+                moveTimer: Math.floor(Math.random() * 60),
+                monsterName: mInfo.name,
+                opened: false,
+                question: QUESTION_BANK[Math.floor(Math.random() * QUESTION_BANK.length)]
+            });
+        }
+
+        // --- PEMBENTUKAN 5 DUNIA BERBEDA ---
+        function scatterPredatorsAwayFromPlayer() {
+            const safeCenterX = MAP_WIDTH / 2;
+            const safeCenterY = MAP_HEIGHT / 2;
+            crocodiles.forEach((croc, idx) => {
+                const angle = (idx / Math.max(1, crocodiles.length)) * Math.PI * 2;
+                croc.x = Math.max(150, Math.min(MAP_WIDTH - 200, safeCenterX + Math.cos(angle) * 750));
+                croc.y = Math.max(150, Math.min(MAP_HEIGHT - 200, safeCenterY + Math.sin(angle) * 650));
+            });
+            tigers.forEach((tiger, idx) => {
+                const angle = (idx / Math.max(1, tigers.length)) * Math.PI * 2 + 0.5;
+                tiger.x = Math.max(150, Math.min(MAP_WIDTH - 200, safeCenterX + Math.cos(angle) * 800));
+                tiger.y = Math.max(150, Math.min(MAP_HEIGHT - 200, safeCenterY + Math.sin(angle) * 700));
+            });
+        }
+
+        function generateWorld() {
+            obstacles = [];
+            lakeAreas = [];
+            chests = [];
+            flowers = [];
+            crocodiles = [];
+            traps = [];
+            canopies = [];
+            tigers = [];
+            portal.active = false;
+
+            const cols = MAP_WIDTH / TILE_SIZE;
+            const rows = MAP_HEIGHT / TILE_SIZE;
+
+            // Tembok batas pinggir peta
+            for (let c = 0; c < cols; c++) {
+                obstacles.push({ x: c * TILE_SIZE, y: 0, width: TILE_SIZE, height: TILE_SIZE, type: currentMapLevel === 5 ? 'wall' : 'tree' });
+                obstacles.push({ x: c * TILE_SIZE, y: (rows - 1) * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, type: currentMapLevel === 5 ? 'wall' : 'tree' });
+            }
+            for (let r = 1; r < rows - 1; r++) {
+                obstacles.push({ x: 0, y: r * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, type: currentMapLevel === 5 ? 'wall' : 'tree' });
+                obstacles.push({ x: (cols - 1) * TILE_SIZE, y: r * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, type: currentMapLevel === 5 ? 'wall' : 'tree' });
+            }
+
+            const mapDescriptions = {
+                1: "Map 1: Padang Rerumputan (Kalahkan 10 Slime)",
+                2: "Map 2: Rawa Buaya (Awas Buaya Keliling Map!)",
+                3: "Map 3: Pemakaman (Hindari Bunga Jebakan Beracun!)",
+                4: "Map 4: Hutan Lebat (Waspada 3 Macan Pemburu!)",
+                5: "Map 5: Labirin Gelap (Jarak Pandang Terbatas!)"
+            };
+            document.getElementById('map-theme-desc').textContent = mapDescriptions[currentMapLevel];
+            document.getElementById('hud-map').textContent = `LEVEL ${currentMapLevel}`;
+
+            if (currentMapLevel === 1) {
+                // MAP 1: Padang Rerumputan dengan Danau, Pohon & Batu
+                lakeAreas.push({ x: 650, y: 550, radiusX: 220, radiusY: 150 });
+                lakeAreas.push({ x: 2450, y: 1750, radiusX: 260, radiusY: 180 });
+                addLakeObstacles();
+                scatterTreesAndRocks(95, 0.35);
+                scatterFlowers(280, ['#f472b6', '#fbbf24', '#a78bfa', '#38bdf8']);
+            } else if (currentMapLevel === 2) {
+                // MAP 2: Rawa Berlumpur & 5 Buaya Patroli Seluruh Map
+                lakeAreas.push({ x: 550, y: 500, radiusX: 240, radiusY: 170 });
+                lakeAreas.push({ x: 1600, y: 1800, radiusX: 280, radiusY: 190 });
+                lakeAreas.push({ x: 2600, y: 700, radiusX: 250, radiusY: 180 });
+                addLakeObstacles();
+                scatterTreesAndRocks(60, 0.4);
+
+                for (let i = 0; i < 5; i++) {
+                    crocodiles.push({
+                        x: 350 + i * 550,
+                        y: 350 + (i % 2) * 1200,
+                        width: 68,
+                        height: 30,
+                        vx: (i % 2 === 0 ? 1 : -1) * 3.0,
+                        vy: (i % 3 === 0 ? 1 : -1) * 2.3,
+                        aiTimer: Math.floor(Math.random() * 80)
+                    });
+                }
+                scatterPredatorsAwayFromPlayer();
+            } else if (currentMapLevel === 3) {
+                // MAP 3: Pemakaman Gelap & 45 Jebakan Bunga Beracun
+                scatterTombstonesAndTrees(85);
+                for (let i = 0; i < 45; i++) {
+                    const tx = Math.floor(Math.random() * (MAP_WIDTH - 300)) + 150;
+                    const ty = Math.floor(Math.random() * (MAP_HEIGHT - 300)) + 150;
+                    if (Math.hypot(tx - MAP_WIDTH / 2, ty - MAP_HEIGHT / 2) > 260) {
+                        traps.push({ x: tx, y: ty, width: 32, height: 32 });
+                    }
+                }
+            } else if (currentMapLevel === 4) {
+                // MAP 4: Hutan Lebat Kanopi Daun & 3 Macan Patroli Cepat
+                scatterTreesAndRocks(120, 0.35);
+                for (let i = 0; i < 38; i++) {
+                    canopies.push({
+                        x: Math.floor(Math.random() * (MAP_WIDTH - 400)) + 200,
+                        y: Math.floor(Math.random() * (MAP_HEIGHT - 400)) + 200,
+                        radius: 110 + Math.random() * 55
+                    });
+                }
+                for (let i = 0; i < 3; i++) {
+                    tigers.push({
+                        x: 500 + i * 950,
+                        y: 450 + i * 650,
+                        width: 48,
+                        height: 30,
+                        vx: 4.2,
+                        vy: 3.6,
+                        aiTimer: 0
+                    });
+                }
+                scatterPredatorsAwayFromPlayer();
+            } else if (currentMapLevel === 5) {
+                // MAP 5: Labirin Gelap (Maze)
+                for (let gx = 4; gx < cols - 4; gx += 6) {
+                    for (let gy = 4; gy < rows - 4; gy += 6) {
+                        const px = gx * TILE_SIZE;
+                        const py = gy * TILE_SIZE;
+                        if (Math.hypot(px - MAP_WIDTH / 2, py - MAP_HEIGHT / 2) < 220) continue;
+                        const horizontal = (gx + gy) % 12 === 0;
+                        for (let seg = 0; seg < 4; seg++) {
+                            obstacles.push({
+                                x: horizontal ? px + seg * TILE_SIZE : px,
+                                y: horizontal ? py : py + seg * TILE_SIZE,
+                                width: TILE_SIZE,
+                                height: TILE_SIZE,
+                                type: 'wall'
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Munculkan 12 Monster Kuis di peta
+            for (let i = 1; i <= 12; i++) {
+                spawnSingleMonster(i);
+            }
+        }
+
+        function addLakeObstacles() {
+            lakeAreas.forEach(lake => {
+                for (let x = lake.x - lake.radiusX; x <= lake.x + lake.radiusX; x += TILE_SIZE) {
+                    for (let y = lake.y - lake.radiusY; y <= lake.y + lake.radiusY; y += TILE_SIZE) {
+                        const dx = (x - lake.x) / lake.radiusX;
+                        const dy = (y - lake.y) / lake.radiusY;
+                        if (dx * dx + dy * dy <= 0.82) {
+                            obstacles.push({ x, y, width: TILE_SIZE, height: TILE_SIZE, type: 'water' });
+                        }
+                    }
+                }
+            });
+        }
+
+        function scatterTreesAndRocks(count, rockRatio) {
+            const cols = MAP_WIDTH / TILE_SIZE;
+            const rows = MAP_HEIGHT / TILE_SIZE;
+            for (let i = 0; i < count; i++) {
+                const px = Math.floor(Math.random() * (cols - 4) + 2) * TILE_SIZE;
+                const py = Math.floor(Math.random() * (rows - 4) + 2) * TILE_SIZE;
+                if (Math.hypot(px - MAP_WIDTH / 2, py - MAP_HEIGHT / 2) > 180 && !isPointInWater(px + 25, py + 25)) {
+                    obstacles.push({
+                        x: px,
+                        y: py,
+                        width: TILE_SIZE,
+                        height: TILE_SIZE,
+                        type: Math.random() > rockRatio ? 'tree' : 'rock'
+                    });
+                }
+            }
+        }
+
+        function scatterTombstonesAndTrees(count) {
+            const cols = MAP_WIDTH / TILE_SIZE;
+            const rows = MAP_HEIGHT / TILE_SIZE;
+            for (let i = 0; i < count; i++) {
+                const px = Math.floor(Math.random() * (cols - 4) + 2) * TILE_SIZE;
+                const py = Math.floor(Math.random() * (rows - 4) + 2) * TILE_SIZE;
+                if (Math.hypot(px - MAP_WIDTH / 2, py - MAP_HEIGHT / 2) > 180) {
+                    obstacles.push({
+                        x: px,
+                        y: py,
+                        width: TILE_SIZE,
+                        height: TILE_SIZE,
+                        type: Math.random() > 0.45 ? 'tombstone' : 'deadtree'
+                    });
+                }
+            }
+        }
+
+        function scatterFlowers(count, palette) {
+            for (let i = 0; i < count; i++) {
+                const fx = Math.random() * (MAP_WIDTH - 200) + 100;
+                const fy = Math.random() * (MAP_HEIGHT - 200) + 100;
+                if (!isPointInWater(fx, fy)) {
+                    flowers.push({
+                        x: fx,
+                        y: fy,
+                        color: palette[Math.floor(Math.random() * palette.length)],
+                        size: Math.random() * 3 + 3
+                    });
+                }
+            }
+        }
+
+        // --- KONTROL KEYBOARD & TOUCH ---
+        function performJump() {
+            if (!gameRunning || isLocked || localPlayer.isJumping) return;
+            localPlayer.isJumping = true;
+            localPlayer.jumpVel = 9.5;
+            AudioFX.jump();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (isLocked) return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                performJump();
+                return;
+            }
+            switch (e.key) {
+                case 'ArrowUp': case 'w': case 'W': keys.Up = true; break;
+                case 'ArrowDown': case 's': case 'S': keys.Down = true; break;
+                case 'ArrowLeft': case 'a': case 'A': keys.Left = true; break;
+                case 'ArrowRight': case 'd': case 'D': keys.Right = true; break;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            switch (e.key) {
+                case 'ArrowUp': case 'w': case 'W': keys.Up = false; break;
+                case 'ArrowDown': case 's': case 'S': keys.Down = false; break;
+                case 'ArrowLeft': case 'a': case 'A': keys.Left = false; break;
+                case 'ArrowRight': case 'd': case 'D': keys.Right = false; break;
+            }
+        });
+
+        const bindTouch = (id, key) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            const start = (e) => { e.preventDefault(); if (!isLocked) keys[key] = true; };
+            const end = (e) => { e.preventDefault(); keys[key] = false; };
+            btn.addEventListener('touchstart', start);
+            btn.addEventListener('touchend', end);
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+        };
+        bindTouch('btn-up', 'Up');
+        bindTouch('btn-down', 'Down');
+        bindTouch('btn-left', 'Left');
+        bindTouch('btn-right', 'Right');
+
+        const btnJump = document.getElementById('btn-jump');
+        if (btnJump) {
+            btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); performJump(); });
+            btnJump.addEventListener('mousedown', (e) => { e.preventDefault(); performJump(); });
+        }
+
+        // --- UPDATE LOGIKA GAME ---
+        function update() {
+            if (!gameRunning || isLocked) return;
+
+            // Fisika Loncat
+            if (localPlayer.isJumping) {
+                localPlayer.jumpZ += localPlayer.jumpVel;
+                localPlayer.jumpVel -= 0.65;
+                if (localPlayer.jumpZ <= 0) {
+                    localPlayer.jumpZ = 0;
+                    localPlayer.jumpVel = 0;
+                    localPlayer.isJumping = false;
+                }
+            }
+
+            let moveX = 0, moveY = 0;
+            if (keys.Up) moveY -= 1;
+            if (keys.Down) moveY += 1;
+            if (keys.Left) moveX -= 1;
+            if (keys.Right) moveX += 1;
+
+            if (moveX !== 0 && moveY !== 0) {
+                moveX *= 0.7071;
+                moveY *= 0.7071;
+            }
+
+            if (moveX !== 0 || moveY !== 0) {
+                localPlayer.dirX = moveX;
+                localPlayer.dirY = moveY;
+            }
+
+            const totalVX = moveX * localPlayer.speed + localPlayer.knockbackX;
+            const totalVY = moveY * localPlayer.speed + localPlayer.knockbackY;
+            localPlayer.knockbackX *= 0.75;
+            localPlayer.knockbackY *= 0.75;
+            if (Math.abs(localPlayer.knockbackX) < 0.2) localPlayer.knockbackX = 0;
+            if (Math.abs(localPlayer.knockbackY) < 0.2) localPlayer.knockbackY = 0;
+
+            const nextX = localPlayer.x + totalVX;
+            const nextY = localPlayer.y + totalVY;
+
+            const boxX = { x: nextX, y: localPlayer.y, width: localPlayer.width, height: localPlayer.height };
+            const boxY = { x: localPlayer.x, y: nextY, width: localPlayer.width, height: localPlayer.height };
+
+            if (!obstacles.some(o => checkCollision(boxX, o))) localPlayer.x = nextX;
+            if (!obstacles.some(o => checkCollision(boxY, o))) localPlayer.y = nextY;
+
+            // Update Kamera Mengikuti Pemain
+            const targetCamX = localPlayer.x + localPlayer.width / 2 - camera.viewportWidth / 2;
+            const targetCamY = localPlayer.y + localPlayer.height / 2 - camera.viewportHeight / 2;
+            camera.x += (targetCamX - camera.x) * 0.14;
+            camera.y += (targetCamY - camera.y) * 0.14;
+            camera.x = Math.max(0, Math.min(MAP_WIDTH - camera.viewportWidth, camera.x));
+            camera.y = Math.max(0, Math.min(MAP_HEIGHT - camera.viewportHeight, camera.y));
+
+            // --- HAZARD MAP 2: BUAYA PATROLI SELURUH MAP ---
+            const isInvulnerable = Date.now() < localPlayer.invulnerableUntil;
+
+            if (currentMapLevel === 2) {
+                crocodiles.forEach(croc => {
+                    croc.aiTimer++;
+                    const distToPlayer = Math.hypot(localPlayer.x - croc.x, localPlayer.y - croc.y);
+                    const distToSafeZone = Math.hypot((MAP_WIDTH / 2) - croc.x, (MAP_HEIGHT / 2) - croc.y);
+
+                    if (distToSafeZone < 220) {
+                        // Buaya tidak boleh berkumpul di titik spawn tengah peta
+                        const awayAngle = Math.atan2(croc.y - (MAP_HEIGHT / 2), croc.x - (MAP_WIDTH / 2));
+                        croc.vx = Math.cos(awayAngle) * 3.5;
+                        croc.vy = Math.sin(awayAngle) * 3.5;
+                    } else if (!isInvulnerable && distToPlayer < 420) {
+                        // Mengejar pemain jika dekat dan tidak sedang kebal
+                        const angle = Math.atan2(localPlayer.y - croc.y, localPlayer.x - croc.x);
+                        croc.vx = Math.cos(angle) * 3.5;
+                        croc.vy = Math.sin(angle) * 3.5;
+                    } else if (croc.aiTimer > 110) {
+                        croc.vx = (Math.random() > 0.5 ? 1 : -1) * (2.4 + Math.random() * 1.4);
+                        croc.vy = (Math.random() > 0.5 ? 1 : -1) * (2.4 + Math.random() * 1.4);
+                        croc.aiTimer = 0;
+                    }
+
+                    const nCx = croc.x + croc.vx;
+                    const nCy = croc.y + croc.vy;
+                    if (nCx > TILE_SIZE * 2 && nCx < MAP_WIDTH - TILE_SIZE * 3) croc.x = nCx; else croc.vx *= -1;
+                    if (nCy > TILE_SIZE * 2 && nCy < MAP_HEIGHT - TILE_SIZE * 3) croc.y = nCy; else croc.vy *= -1;
+
+                    if (!isInvulnerable && localPlayer.jumpZ < 18 && checkCollision(localPlayer, croc)) {
+                        AudioFX.wrong();
+                        mapChestsCompleted = 0;
+                        portal.active = false;
+                        localPlayer.x = MAP_WIDTH / 2;
+                        localPlayer.y = MAP_HEIGHT / 2;
+                        localPlayer.invulnerableUntil = Date.now() + 2500; // Kebal 2.5 detik saat respawn
+                        scatterPredatorsAwayFromPlayer(); // Pindahkan semua buaya menjauh
+                        centerCamera();
+                        updateHUD();
+                        showToast("DIGIGIT BUAYA! Progress Map 2 diulang dari 0/10!");
+                    }
+                });
+            }
+
+            // --- HAZARD MAP 3: JEBAKAN BUNGA MAKAM (Knockback 7 Langkah & -20 Poin) ---
+            if (currentMapLevel === 3 && !isInvulnerable && localPlayer.jumpZ < 12 && Math.abs(localPlayer.knockbackX) < 1) {
+                traps.forEach(trap => {
+                    if (checkCollision(localPlayer, trap)) {
+                        AudioFX.wrong();
+                        score = Math.max(0, score - 20);
+                        localPlayer.invulnerableUntil = Date.now() + 1200;
+                        updateHUD();
+                        const angle = Math.atan2(localPlayer.y - trap.y, localPlayer.x - trap.x);
+                        localPlayer.knockbackX = Math.cos(angle) * 48; // ~7 langkah knockback
+                        localPlayer.knockbackY = Math.sin(angle) * 48;
+                        showToast("TERKENA BUNGA BERACUN! Terlempar & -20 Poin!");
+                    }
+                });
+            }
+
+            // --- HAZARD MAP 4: 3 MACAN PATROLI CEPAT ---
+            if (currentMapLevel === 4) {
+                tigers.forEach(tiger => {
+                    tiger.aiTimer++;
+                    const dist = Math.hypot(localPlayer.x - tiger.x, localPlayer.y - tiger.y);
+                    const distToSafeZone = Math.hypot((MAP_WIDTH / 2) - tiger.x, (MAP_HEIGHT / 2) - tiger.y);
+
+                    if (distToSafeZone < 220) {
+                        const awayAngle = Math.atan2(tiger.y - (MAP_HEIGHT / 2), tiger.x - (MAP_WIDTH / 2));
+                        tiger.vx = Math.cos(awayAngle) * 4.5;
+                        tiger.vy = Math.sin(awayAngle) * 4.5;
+                    } else if (!isInvulnerable && dist < 400) {
+                        const angle = Math.atan2(localPlayer.y - tiger.y, localPlayer.x - tiger.x);
+                        tiger.vx = Math.cos(angle) * 4.9;
+                        tiger.vy = Math.sin(angle) * 4.9;
+                    } else if (tiger.aiTimer > 90) {
+                        tiger.vx = (Math.random() > 0.5 ? 1 : -1) * 4.2;
+                        tiger.vy = (Math.random() > 0.5 ? 1 : -1) * 4.2;
+                        tiger.aiTimer = 0;
+                    }
+
+                    const nTx = tiger.x + tiger.vx;
+                    const nTy = tiger.y + tiger.vy;
+                    if (nTx > TILE_SIZE * 2 && nTx < MAP_WIDTH - TILE_SIZE * 3) tiger.x = nTx; else tiger.vx *= -1;
+                    if (nTy > TILE_SIZE * 2 && nTy < MAP_HEIGHT - TILE_SIZE * 3) tiger.y = nTy; else tiger.vy *= -1;
+
+                    if (!isInvulnerable && checkCollision(localPlayer, tiger)) {
+                        localPlayer.tigerDamageTimer++;
+                        if (localPlayer.tigerDamageTimer >= 8) { // Serangan cepat mengikis 2 poin
+                            score = Math.max(0, score - 2);
+                            updateHUD();
+                            localPlayer.tigerDamageTimer = 0;
+                            showToast("DISERANG MACAN! Poin terkikis cepat (-2)!");
+                        }
+                    }
+                });
+            }
+
+            // --- PERGERAKAN & DETEKSI MONSTER KUIS ---
+            chests.forEach((monster, idx) => {
+                if (!monster.opened) {
+                    monster.moveTimer++;
+                    const distToSafeZone = Math.hypot((MAP_WIDTH / 2) - monster.x, (MAP_HEIGHT / 2) - monster.y);
+                    if (distToSafeZone < 180) {
+                        const awayAngle = Math.atan2(monster.y - (MAP_HEIGHT / 2), monster.x - (MAP_WIDTH / 2));
+                        monster.vx = Math.cos(awayAngle) * 2.0;
+                        monster.vy = Math.sin(awayAngle) * 2.0;
+                    } else if (monster.moveTimer > 85) {
+                        monster.vx = (Math.random() > 0.5 ? 1 : -1) * (1.3 + Math.random() * 1.2);
+                        monster.vy = (Math.random() > 0.5 ? 1 : -1) * (1.3 + Math.random() * 1.2);
+                        monster.moveTimer = 0;
+                    }
+                    const nextMx = monster.x + monster.vx;
+                    const nextMy = monster.y + monster.vy;
+                    const mBox = { x: nextMx, y: nextMy, width: monster.width, height: monster.height };
+
+                    if (nextMx > TILE_SIZE * 2 && nextMx < MAP_WIDTH - TILE_SIZE * 3 &&
+                        nextMy > TILE_SIZE * 2 && nextMy < MAP_HEIGHT - TILE_SIZE * 3 &&
+                        !obstacles.some(o => checkCollision(mBox, o)) &&
+                        !isPointInWater(nextMx + 19, nextMy + 19)) {
+                        monster.x = nextMx;
+                        monster.y = nextMy;
+                    } else {
+                        monster.vx *= -1;
+                        monster.vy *= -1;
+                    }
+
+                    if (localPlayer.jumpZ < 15 && checkCollision(localPlayer, monster)) {
+                        openQuizModal(monster, idx);
+                    }
+                }
+            });
+
+            // --- PORTAL LEVEL UP ---
+            if (portal.active && checkCollision(localPlayer, portal)) {
+                AudioFX.portal();
+                if (currentMapLevel < MAX_MAPS) {
+                    currentMapLevel++;
+                    mapChestsCompleted = 0;
+                    localPlayer.x = MAP_WIDTH / 2;
+                    localPlayer.y = MAP_HEIGHT / 2;
+                    localPlayer.invulnerableUntil = Date.now() + 2500;
+                    generateWorld();
+                    centerCamera();
+                    updateHUD();
+                    showToast(`MEMASUKI MAP LEVEL ${currentMapLevel}!`, "bg-purple-600/95");
+                } else {
+                    finishGame();
+                }
+            }
+        }
+
+        // --- MODAL KUIS ---
+        function openQuizModal(monster, idx) {
+            isLocked = true;
+            activeMonster = monster;
+            activeMonsterIndex = idx;
+            Object.keys(keys).forEach(k => keys[k] = false);
+            AudioFX.encounter();
+
+            document.getElementById('lock-warning').classList.remove('hidden');
+            const modal = document.getElementById('quiz-modal');
+            const subjectBadge = document.getElementById('quiz-subject-badge');
+            const qText = document.getElementById('quiz-question');
+            const optionsDiv = document.getElementById('quiz-options');
+            const rewardText = document.getElementById('quiz-reward');
+            const feedback = document.getElementById('quiz-feedback');
+
+            feedback.classList.add('hidden');
+            subjectBadge.innerHTML = `<i class="fa-solid fa-book-open"></i> ${monster.question.subject.toUpperCase()}`;
+            qText.textContent = `Tantangan ${monster.monsterName}: ${monster.question.q}`;
+            rewardText.textContent = `+${monster.question.points} Poin`;
+            optionsDiv.innerHTML = '';
+
+            monster.question.options.forEach((opt, oIdx) => {
+                const btn = document.createElement('button');
+                btn.type = "button";
+                btn.className = "w-full text-left p-3 rounded-xl bg-slate-800/90 hover:bg-amber-500/40 border border-slate-700 hover:border-amber-400 text-slate-100 text-xs sm:text-sm font-semibold transition-all flex items-center justify-between group shadow cursor-pointer";
+                btn.innerHTML = `<span>${String.fromCharCode(65 + oIdx)}. ${opt}</span>`;
+                btn.onclick = () => submitAnswer(oIdx);
+                optionsDiv.appendChild(btn);
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        function submitAnswer(selectedIndex) {
+            if (!activeMonster) return;
+            const q = activeMonster.question;
+            const feedback = document.getElementById('quiz-feedback');
+            const buttons = document.getElementById('quiz-options').children;
+
+            for (let b of buttons) {
+                b.disabled = true;
+                b.classList.add('opacity-60', 'cursor-not-allowed');
+            }
+
+            const defeatedIndex = activeMonsterIndex;
+            const defeatedId = activeMonster.id;
+            activeMonster.opened = true;
+
+            if (selectedIndex === q.answer) {
+                AudioFX.correct();
+                score += q.points;
+                mapChestsCompleted++;
+                feedback.className = "p-3 rounded-xl text-center text-xs font-bold bg-emerald-500/40 text-emerald-300 border border-emerald-500/40";
+                feedback.innerHTML = `<i class="fa-solid fa-star text-amber-400 mr-1.5"></i> BENAR! Monster dikalahkan (+${q.points} Poin)`;
+            } else {
+                AudioFX.wrong();
+                feedback.className = "p-3 rounded-xl text-center text-xs font-bold bg-rose-500/40 text-rose-300 border border-rose-500/40";
+                feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Kurang tepat! Jawaban benar: <b>${q.options[q.answer]}</b>`;
+            }
+
+            feedback.classList.remove('hidden');
+            updateHUD();
+
+            // Jika sudah mengalahkan 10 monster (1.000 poin map), buka portal!
+            if (mapChestsCompleted >= TARGET_CHESTS_PER_MAP && !portal.active) {
+                portal.active = true;
+                portal.x = MAP_WIDTH / 2 - 40;
+                portal.y = MAP_HEIGHT / 2 - 40;
+                showToast("PORTAL UNGU MUNCUL DI TENGAH PETA! Masuk untuk lanjut!", "bg-purple-600/95");
+            }
+
+            // Respawn monster kuis baru dalam 3.5 detik agar stok monster selalu ada
+            setTimeout(() => {
+                if (gameRunning) {
+                    chests.splice(defeatedIndex, 1);
+                    spawnSingleMonster(defeatedId);
+                }
+            }, 3500);
+
+            setTimeout(() => {
+                document.getElementById('quiz-modal').classList.add('hidden');
+                document.getElementById('lock-warning').classList.add('hidden');
+                isLocked = false;
+                activeMonster = null;
+                activeMonsterIndex = -1;
+            }, 1300);
+        }
+
+        // --- RENDER GRAFIS HIGHER-BIT ---
+        function render() {
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.scale(camera.zoom, camera.zoom);
+            ctx.translate(-camera.x, -camera.y);
+
+            // 1. Latar Belakang Tanah Sesuai Map
+            const bgColors = {
+                1: '#15803d', // Rumput segar
+                2: '#365314', // Rawa lumut gelap
+                3: '#1e1b4b', // Pemakaman malam
+                4: '#14532d', // Hutan rimba pekat
+                5: '#0f172a'  // Labirin batu gelap
+            };
+            ctx.fillStyle = bgColors[currentMapLevel] || '#15803d';
+            ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+            // Grid Tekstur Tanah
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 2;
+            for (let x = 0; x < MAP_WIDTH; x += TILE_SIZE * 2) {
+                for (let y = 0; y < MAP_HEIGHT; y += TILE_SIZE * 2) {
+                    ctx.strokeRect(x, y, TILE_SIZE * 2, TILE_SIZE * 2);
+                }
+            }
+
+            // 2. Danau & Air
+            const time = Date.now() * 0.002;
+            lakeAreas.forEach(lake => {
+                ctx.fillStyle = currentMapLevel === 2 ? '#4d7c0f' : '#fde047';
+                ctx.beginPath();
+                ctx.ellipse(lake.x, lake.y, lake.radiusX + 10, lake.radiusY + 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = currentMapLevel === 2 ? '#3f6212' : '#0284c7';
+                ctx.beginPath();
+                ctx.ellipse(lake.x, lake.y, lake.radiusX, lake.radiusY, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                ctx.lineWidth = 2;
+                const wave = Math.sin(time) * 6;
+                ctx.beginPath();
+                ctx.ellipse(lake.x, lake.y, lake.radiusX * 0.65 + wave, lake.radiusY * 0.65 + wave, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            // 3. Bunga Hiasan (Map 1)
+            flowers.forEach(f => {
+                ctx.fillStyle = f.color;
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 4. Jebakan Bunga Beracun (Map 3)
+            if (currentMapLevel === 3) {
+                traps.forEach(t => {
+                    ctx.fillStyle = '#a21caf';
+                    ctx.beginPath();
+                    ctx.arc(t.x + 16, t.y + 16, 14, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#f43f5e';
+                    ctx.beginPath();
+                    ctx.arc(t.x + 16, t.y + 16, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            // 5. Rintangan (Pohon, Batu, Nisan, Tembok Labirin)
+            obstacles.forEach(obs => {
+                if (obs.type === 'tree') {
+                    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                    ctx.beginPath(); ctx.ellipse(obs.x + 25, obs.y + 44, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(obs.x + 19, obs.y + 24, 12, 22);
+                    ctx.fillStyle = '#166534';
+                    ctx.beginPath(); ctx.arc(obs.x + 25, obs.y + 18, 21, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#22c55e';
+                    ctx.beginPath(); ctx.arc(obs.x + 20, obs.y + 13, 14, 0, Math.PI * 2); ctx.fill();
+                } else if (obs.type === 'rock') {
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(obs.x + 8, obs.y + 14, 34, 28);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(obs.x + 12, obs.y + 16, 18, 12);
+                } else if (obs.type === 'tombstone') {
+                    ctx.fillStyle = '#64748b';
+                    ctx.beginPath();
+                    ctx.arc(obs.x + 25, obs.y + 22, 14, Math.PI, 0);
+                    ctx.lineTo(obs.x + 39, obs.y + 44);
+                    ctx.lineTo(obs.x + 11, obs.y + 44);
+                    ctx.fill();
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(obs.x + 23, obs.y + 18, 4, 16);
+                    ctx.fillRect(obs.x + 18, obs.y + 23, 14, 4);
+                } else if (obs.type === 'deadtree') {
+                    ctx.fillStyle = '#451a03';
+                    ctx.fillRect(obs.x + 20, obs.y + 12, 10, 34);
+                    ctx.fillRect(obs.x + 10, obs.y + 18, 30, 5);
+                } else if (obs.type === 'wall') {
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(obs.x, obs.y, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#64748b';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(obs.x + 2, obs.y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                }
+            });
+
+            // 6. Monster Kuis (Menggantikan Peti sesuai Tema Map)
+            const bob = Math.sin(Date.now() * 0.008) * 4;
+            chests.forEach(m => {
+                if (!m.opened) {
+                    const my = m.y + bob;
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(m.x + 19, m.y + 36, 15, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (currentMapLevel === 1) {
+                        // Slime Hijau
+                        ctx.fillStyle = '#22c55e';
+                        ctx.beginPath();
+                        ctx.arc(m.x + 19, my + 22, 17, Math.PI, 0);
+                        ctx.lineTo(m.x + 36, my + 32);
+                        ctx.lineTo(m.x + 2, my + 32);
+                        ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(m.x + 11, my + 16, 5, 5);
+                        ctx.fillRect(m.x + 22, my + 16, 5, 5);
+                    } else if (currentMapLevel === 2) {
+                        // Katak Rawa Ungu
+                        ctx.fillStyle = '#9333ea';
+                        ctx.fillRect(m.x + 6, my + 12, 26, 20);
+                        ctx.fillStyle = '#fef08a';
+                        ctx.fillRect(m.x + 8, my + 7, 7, 6);
+                        ctx.fillRect(m.x + 23, my + 7, 7, 6);
+                    } else if (currentMapLevel === 3) {
+                        // Hantu Makam
+                        ctx.fillStyle = '#f8fafc';
+                        ctx.beginPath();
+                        ctx.arc(m.x + 19, my + 16, 15, Math.PI, 0);
+                        ctx.lineTo(m.x + 34, my + 34);
+                        ctx.lineTo(m.x + 4, my + 34);
+                        ctx.fill();
+                        ctx.fillStyle = '#0f172a';
+                        ctx.fillRect(m.x + 13, my + 14, 4, 4);
+                        ctx.fillRect(m.x + 22, my + 14, 4, 4);
+                    } else if (currentMapLevel === 4) {
+                        // Kelelawar Hutan
+                        const flap = Math.sin(Date.now() * 0.025) * 6;
+                        ctx.fillStyle = '#334155';
+                        ctx.beginPath();
+                        ctx.moveTo(m.x + 12, my + 18);
+                        ctx.lineTo(m.x - 6, my + 8 + flap);
+                        ctx.lineTo(m.x + 6, my + 26);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(m.x + 26, my + 18);
+                        ctx.lineTo(m.x + 44, my + 8 + flap);
+                        ctx.lineTo(m.x + 32, my + 26);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(m.x + 19, my + 18, 11, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        // Mumi Labirin
+                        ctx.fillStyle = '#d97706';
+                        ctx.fillRect(m.x + 8, my + 6, 22, 28);
+                        ctx.fillStyle = '#fef3c7';
+                        ctx.fillRect(m.x + 8, my + 11, 22, 3);
+                        ctx.fillRect(m.x + 8, my + 20, 22, 3);
+                    }
+
+                    // Tanda Tanya Kuis (?)
+                    ctx.font = 'bold 13px Fredoka, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fillText('?', m.x + 19, my - 4);
+                }
+            });
+
+            // 7. Buaya Patroli (Map 2)
+            if (currentMapLevel === 2) {
+                crocodiles.forEach(c => {
+                    ctx.fillStyle = '#14532d';
+                    ctx.fillRect(c.x, c.y + 6, c.width, c.height - 6);
+                    ctx.fillStyle = '#22c55e';
+                    for (let sx = 6; sx < c.width - 10; sx += 12) {
+                        ctx.fillRect(c.x + sx, c.y + 2, 7, 5);
+                    }
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(c.vx >= 0 ? c.x + c.width - 12 : c.x + 6, c.y + 9, 5, 5);
+                });
+            }
+
+            // 8. Macan Patroli (Map 4)
+            if (currentMapLevel === 4) {
+                tigers.forEach(t => {
+                    ctx.fillStyle = '#ea580c';
+                    ctx.fillRect(t.x, t.y, t.width, t.height);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(t.x + 10, t.y + 3, 4, 22);
+                    ctx.fillRect(t.x + 22, t.y + 3, 4, 22);
+                    ctx.fillRect(t.x + 34, t.y + 3, 4, 22);
+                });
+            }
+
+            // 9. Portal Ungu Level Up
+            if (portal.active) {
+                const pPulse = Math.sin(Date.now() * 0.006) * 8;
+                ctx.fillStyle = 'rgba(168, 85, 247, 0.45)';
+                ctx.beginPath();
+                ctx.arc(portal.x + 40, portal.y + 40, 48 + pPulse, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#7e22ce';
+                ctx.beginPath();
+                ctx.arc(portal.x + 40, portal.y + 40, 32, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#e879f9';
+                ctx.beginPath();
+                ctx.arc(portal.x + 40, portal.y + 40, 16, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 10. Karakter Pemain (Higher-Bit Style)
+            drawCharacter(localPlayer.x, localPlayer.y, localPlayer.jumpZ, playerColor, playerName, localPlayer.dirX);
+
+            // 11. Kanopi Daun Menutupi Karakter (Map 4)
+            if (currentMapLevel === 4) {
+                canopies.forEach(can => {
+                    ctx.fillStyle = 'rgba(20, 83, 45, 0.88)';
+                    ctx.beginPath();
+                    ctx.arc(can.x, can.y, can.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            // 12. Kegelapan Maze 20 Langkah (Map 5 Fog of War)
+            if (currentMapLevel === 5) {
+                const px = localPlayer.x + localPlayer.width / 2;
+                const py = localPlayer.y + localPlayer.height / 2;
+                const visionRadius = 260;
+                const grad = ctx.createRadialGradient(px, py, visionRadius * 0.45, px, py, visionRadius);
+                grad.addColorStop(0, 'rgba(2, 6, 23, 0)');
+                grad.addColorStop(1, 'rgba(2, 6, 23, 0.98)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(camera.x, camera.y, camera.viewportWidth, camera.viewportHeight);
+            }
+
+            ctx.restore();
+
+            // 13. Mini-Map Radar
+            renderMiniMap();
+        }
+
+        function drawCharacter(x, y, jumpZ, color, name, dirX) {
+            // Efek berkedip saat karakter kebal (Spawn Shield)
+            if (Date.now() < localPlayer.invulnerableUntil && Math.floor(Date.now() / 120) % 2 === 0) {
+                return;
+            }
+            const shadowScale = Math.max(0.35, 1 - (jumpZ / 60));
+            const ry = y - jumpZ;
+
+            // Bayangan
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.38 * shadowScale})`;
+            ctx.beginPath();
+            ctx.ellipse(x + 17, y + 38, 14 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Badan & Rompi Petualang
+            ctx.fillStyle = color;
+            ctx.fillRect(x + 5, ry + 15, 24, 18);
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(x + 5, ry + 25, 24, 4);
+
+            // Kepala & Topi/Rambut
+            ctx.fillStyle = '#fed7aa';
+            ctx.beginPath();
+            ctx.arc(x + 17, ry + 11, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(x + 17, ry + 8, 10, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // Mata
+            ctx.fillStyle = '#0f172a';
+            if (dirX >= 0) ctx.fillRect(x + 19, ry + 10, 3, 3);
+            if (dirX <= 0) ctx.fillRect(x + 12, ry + 10, 3, 3);
+
+            // Nama di atas kepala
+            ctx.font = 'bold 11px Fredoka, sans-serif';
+            ctx.textAlign = 'center';
+            const tw = ctx.measureText(name).width;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+            ctx.fillRect(x + 17 - tw / 2 - 4, ry - 15, tw + 8, 14);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(name, x + 17, ry - 4);
+        }
+
+        function renderMiniMap() {
+            const mmSize = Math.min(115, Math.round(canvas.width * 0.22));
+            const pad = 14;
+            const mmX = canvas.width - mmSize - pad;
+            const mmY = canvas.height - mmSize - pad;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.fillRect(mmX, mmY, mmSize, mmSize);
+            ctx.strokeRect(mmX, mmY, mmSize, mmSize);
+
+            const sx = mmSize / MAP_WIDTH;
+            const sy = mmSize / MAP_HEIGHT;
+
+            // Titik Monster Kuis
+            chests.forEach(c => {
+                if (!c.opened) {
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.beginPath();
+                    ctx.arc(mmX + c.x * sx, mmY + c.y * sy, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Titik Portal
+            if (portal.active) {
+                ctx.fillStyle = '#c084fc';
+                ctx.beginPath();
+                ctx.arc(mmX + (portal.x + 40) * sx, mmY + (portal.y + 40) * sy, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Titik Pemain
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(mmX + localPlayer.x * sx, mmY + localPlayer.y * sy, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // --- HUD & TIMER ---
+        function updateHUD() {
+            document.getElementById('hud-score').textContent = score;
+            document.getElementById('hud-chests').textContent = `${mapChestsCompleted}/${TARGET_CHESTS_PER_MAP}`;
+        }
+
+        function startTimer() {
+            startTime = performance.now();
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!gameRunning) return;
+                elapsedTime = Math.floor((performance.now() - startTime) / 1000);
+                const mins = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
+                const secs = String(elapsedTime % 60).padStart(2, '0');
+                document.getElementById('hud-timer').textContent = `${mins}:${secs}`;
+            }, 500);
+        }
+
+        // --- START & FINISH GAME ---
+        function startGame() {
+            AudioFX.init();
+            const inputVal = document.getElementById('player-name-input').value.trim();
+            playerName = inputVal || "Petualang";
+            playerColor = PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)];
+
+            currentMapLevel = 1;
+            score = 0;
+            mapChestsCompleted = 0;
+            elapsedTime = 0;
+            isLocked = false;
+            activeMonster = null;
+
+            generateWorld();
+
+            localPlayer.x = MAP_WIDTH / 2;
+            localPlayer.y = MAP_HEIGHT / 2;
+            localPlayer.jumpZ = 0;
+            localPlayer.jumpVel = 0;
+            localPlayer.isJumping = false;
+            localPlayer.invulnerableUntil = Date.now() + 2500;
+
+            resizeCanvas();
+            centerCamera();
+            startTimer();
+            updateHUD();
+
+            document.getElementById('overlay-start').classList.add('hidden');
+            document.getElementById('overlay-end').classList.add('hidden');
+            document.getElementById('quiz-modal').classList.add('hidden');
+            document.getElementById('lock-warning').classList.add('hidden');
+            document.getElementById('multiplayer-status').textContent = `Bermain sebagai ${playerName} • Kalahkan 10 Monster per Peta!`;
+
+            gameRunning = true;
+        }
+
+        function finishGame() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            AudioFX.victory();
+            const mins = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
+            const secs = String(elapsedTime % 60).padStart(2, '0');
+            document.getElementById('end-score').textContent = score;
+            document.getElementById('end-time').textContent = `${mins}:${secs}`;
+            document.getElementById('overlay-end').classList.remove('hidden');
+        }
+
+        function loop() {
+            update();
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        document.getElementById('btn-start').addEventListener('click', startGame);
+        document.getElementById('btn-play-again').addEventListener('click', startGame);
+        document.getElementById('btn-restart').addEventListener('click', startGame);
+
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            loop();
+        });
+    </script>
+</body>
+</html>
