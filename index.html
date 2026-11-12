@@ -1175,8 +1175,11 @@
         // --- MULTIPLAYER SINKRONISASI (HTTPS REST API) ---
         const FS_REST_BASE = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
         const FS_KEY_PARAM = `key=${encodeURIComponent(firebaseConfig.apiKey)}`;
-        const RTDB_FALLBACK_BASE = `https://petualangan-ulangan-default-rtdb.firebaseio.com`;
-        let useRtdbFallback = false;
+        const RTDB_CANDIDATES = [
+            `https://${firebaseConfig.projectId}-default-rtdb.asia-southeast1.firebasedatabase.app`,
+            `https://${firebaseConfig.projectId}-default-rtdb.firebaseio.com`
+        ];
+        let activeRtdbBase = null;
         let pollIntervalId = null;
 
         function toFsFields(obj) {
@@ -1203,20 +1206,33 @@
         }
 
         async function writePlayerState(safeRoom, payload) {
-            if (!useRtdbFallback) {
-                const res = await fetch(`${FS_REST_BASE}/room_${safeRoom}_players/${currentUserId}?${FS_KEY_PARAM}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(toFsFields(payload))
-                });
-                if (res.ok) return true;
-                if (res.status === 404) {
-                    useRtdbFallback = true;
-                } else {
-                    throw new Error(`HTTP ${res.status}`);
+            if (!activeRtdbBase) {
+                try {
+                    const res = await fetch(`${FS_REST_BASE}/room_${safeRoom}_players/${currentUserId}?${FS_KEY_PARAM}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(toFsFields(payload))
+                    });
+                    if (res.ok) return true;
+                } catch (e) {}
+
+                for (const base of RTDB_CANDIDATES) {
+                    try {
+                        const rtRes = await fetch(`${base}/rooms/${safeRoom}/players/${currentUserId}.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (rtRes.ok) {
+                            activeRtdbBase = base;
+                            return true;
+                        }
+                    } catch (e) {}
                 }
+                return false;
             }
-            const rtRes = await fetch(`${RTDB_FALLBACK_BASE}/rooms/${safeRoom}/players/${currentUserId}.json`, {
+
+            const rtRes = await fetch(`${activeRtdbBase}/rooms/${safeRoom}/players/${currentUserId}.json`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1251,7 +1267,7 @@
 
                 const joined = await writePlayerState(safeRoom, initialPayload);
                 if (!joined) {
-                    throw new Error("Database Firebase belum dibuat. Buka Firebase Console -> Firestore -> Create Database!");
+                    throw new Error("Aktifkan Realtime Database (Test Mode) di Firebase Console terlebih dahulu!");
                 }
 
                 if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
@@ -1267,7 +1283,7 @@
                         const nextRemotes = {};
                         let count = 1;
 
-                        if (!useRtdbFallback) {
+                        if (!activeRtdbBase) {
                             const pResp = await fetch(playersColUrl);
                             if (pResp.ok) {
                                 const listData = await pResp.json();
@@ -1285,7 +1301,7 @@
                                 });
                             }
                         } else {
-                            const pResp = await fetch(`${RTDB_FALLBACK_BASE}/rooms/${safeRoom}/players.json`);
+                            const pResp = await fetch(`${activeRtdbBase}/rooms/${safeRoom}/players.json`);
                             if (pResp.ok) {
                                 const allPlayers = (await pResp.json()) || {};
                                 Object.entries(allPlayers).forEach(([docId, pData]) => {
@@ -1306,7 +1322,7 @@
                         if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
 
                         if (pollTick % 4 === 0) {
-                            if (!useRtdbFallback) {
+                            if (!activeRtdbBase) {
                                 const rResp = await fetch(roomUrl);
                                 if (rResp.ok) {
                                     const d = fromFsFields(await rResp.json());
@@ -1316,7 +1332,7 @@
                                     }
                                 }
                             } else {
-                                const rResp = await fetch(`${RTDB_FALLBACK_BASE}/rooms/${safeRoom}/meta.json`);
+                                const rResp = await fetch(`${activeRtdbBase}/rooms/${safeRoom}/meta.json`);
                                 if (rResp.ok) {
                                     const d = (await rResp.json()) || {};
                                     if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
@@ -1366,7 +1382,7 @@
 
         function syncMultiplayerMapChange(nextIdx) {
             if (!mpActive) return;
-            if (!useRtdbFallback) {
+            if (!activeRtdbBase) {
                 const roomUrl = `${FS_REST_BASE}/rooms/${currentRoomCode}?${FS_KEY_PARAM}`;
                 fetch(roomUrl, {
                     method: 'PATCH',
@@ -1374,7 +1390,7 @@
                     body: JSON.stringify(toFsFields({ mapIndex: nextIdx, updatedAt: Date.now() }))
                 }).catch(() => {});
             } else {
-                fetch(`${RTDB_FALLBACK_BASE}/rooms/${currentRoomCode}/meta.json`, {
+                fetch(`${activeRtdbBase}/rooms/${currentRoomCode}/meta.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mapIndex: nextIdx, updatedAt: Date.now() })
