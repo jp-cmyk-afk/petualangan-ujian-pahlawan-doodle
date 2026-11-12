@@ -264,8 +264,21 @@
 
         async function initMultiplayerBackend() {
             try {
-                if (typeof __firebase_config === 'undefined' || !__firebase_config) return false;
-                const firebaseConfig = JSON.parse(__firebase_config);
+                // Gunakan konfigurasi Firebase proyek 'petualangan-ulangan' untuk GitHub Pages / Web Hosting
+                const defaultFirebaseConfig = {
+                    apiKey: "AIzaSyASKeS_grOu2dThrXEuEayOMAKF4kseySA",
+                    authDomain: "petualangan-ulangan.firebaseapp.com",
+                    projectId: "petualangan-ulangan",
+                    storageBucket: "petualangan-ulangan.firebasestorage.app",
+                    messagingSenderId: "38419658419",
+                    appId: "1:38419658419:web:30263f1b31a8c659a1a2c6",
+                    measurementId: "G-MQ519LR0VM"
+                };
+
+                const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
+                    ? JSON.parse(__firebase_config)
+                    : defaultFirebaseConfig;
+
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
