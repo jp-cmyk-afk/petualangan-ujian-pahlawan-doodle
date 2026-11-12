@@ -1175,6 +1175,8 @@
         // --- MULTIPLAYER SINKRONISASI (HTTPS REST API) ---
         const FS_REST_BASE = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
         const FS_KEY_PARAM = `key=${encodeURIComponent(firebaseConfig.apiKey)}`;
+        const RTDB_FALLBACK_BASE = `https://petualangan-ulangan-default-rtdb.firebaseio.com`;
+        let useRtdbFallback = false;
         let pollIntervalId = null;
 
         function toFsFields(obj) {
@@ -1200,6 +1202,28 @@
             return res;
         }
 
+        async function writePlayerState(safeRoom, payload) {
+            if (!useRtdbFallback) {
+                const res = await fetch(`${FS_REST_BASE}/room_${safeRoom}_players/${currentUserId}?${FS_KEY_PARAM}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(toFsFields(payload))
+                });
+                if (res.ok) return true;
+                if (res.status === 404) {
+                    useRtdbFallback = true;
+                } else {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+            }
+            const rtRes = await fetch(`${RTDB_FALLBACK_BASE}/rooms/${safeRoom}/players/${currentUserId}.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return rtRes.ok;
+        }
+
         async function connectMultiplayerRoom(roomCode) {
             const dotEl = document.getElementById('hud-mp-dot');
             const safeRoom = roomCode.replace(/[^A-Z0-9_-]/g, '') || 'PUBLIK';
@@ -1214,42 +1238,21 @@
             document.getElementById('hud-room-code').textContent = safeRoom;
 
             try {
-                // Daftarkan posisi pemain langsung ke Firestore
-                const joinResp = await fetch(`${FS_REST_BASE}/room_${safeRoom}_players/${currentUserId}?${FS_KEY_PARAM}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(toFsFields({
-                        name: player.name,
-                        color: player.color,
-                        x: Math.round(player.x),
-                        y: Math.round(player.y),
-                        jumpZ: Math.round(player.jumpZ),
-                        mapIndex: currentMapIndex,
-                        score,
-                        lastSeen: Date.now()
-                    }))
-                });
+                const initialPayload = {
+                    name: player.name,
+                    color: player.color,
+                    x: Math.round(player.x),
+                    y: Math.round(player.y),
+                    jumpZ: Math.round(player.jumpZ),
+                    mapIndex: currentMapIndex,
+                    score,
+                    lastSeen: Date.now()
+                };
 
-                if (!joinResp.ok) {
-                    const errTxt = await joinResp.text();
-                    throw new Error(`HTTP ${joinResp.status}: ${errTxt}`);
+                const joined = await writePlayerState(safeRoom, initialPayload);
+                if (!joined) {
+                    throw new Error("Database Firebase belum dibuat. Buka Firebase Console -> Firestore -> Create Database!");
                 }
-
-                // Cek atau buat dokumen room (opsional, tidak memblokir koneksi jika baru dibuat)
-                fetch(roomUrl).then(async (res) => {
-                    if (res.status === 404) {
-                        await fetch(roomUrl, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(toFsFields({ mapIndex: currentMapIndex, updatedAt: Date.now() }))
-                        });
-                    } else if (res.ok) {
-                        const data = fromFsFields(await res.json());
-                        if (typeof data.mapIndex === 'number' && data.mapIndex > currentMapIndex && data.mapIndex < MAP_THEMES.length) {
-                            buildMap(data.mapIndex);
-                        }
-                    }
-                }).catch(() => {});
 
                 if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
 
@@ -1260,37 +1263,66 @@
                     isPolling = true;
                     pollTick++;
                     try {
-                        const pResp = await fetch(playersColUrl);
-                        if (pResp.ok) {
-                            const listData = await pResp.json();
-                            const docs = listData.documents || [];
-                            const now = Date.now();
-                            const nextRemotes = {};
-                            let count = 1;
-                            docs.forEach(docItem => {
-                                const docId = docItem.name.split('/').pop();
-                                if (docId === currentUserId) return;
-                                const pData = fromFsFields(docItem);
-                                if (now - (pData.lastSeen || 0) < 20000) {
-                                    const prev = remotePlayers[docId];
-                                    pData.displayX = prev && typeof prev.displayX === 'number' ? prev.displayX : pData.x;
-                                    pData.displayY = prev && typeof prev.displayY === 'number' ? prev.displayY : pData.y;
-                                    nextRemotes[docId] = pData;
-                                    count++;
-                                }
-                            });
-                            remotePlayers = nextRemotes;
-                            document.getElementById('hud-online-count').textContent = count;
-                            if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
+                        const now = Date.now();
+                        const nextRemotes = {};
+                        let count = 1;
+
+                        if (!useRtdbFallback) {
+                            const pResp = await fetch(playersColUrl);
+                            if (pResp.ok) {
+                                const listData = await pResp.json();
+                                (listData.documents || []).forEach(docItem => {
+                                    const docId = docItem.name.split('/').pop();
+                                    if (docId === currentUserId) return;
+                                    const pData = fromFsFields(docItem);
+                                    if (now - (pData.lastSeen || 0) < 20000) {
+                                        const prev = remotePlayers[docId];
+                                        pData.displayX = prev && typeof prev.displayX === 'number' ? prev.displayX : pData.x;
+                                        pData.displayY = prev && typeof prev.displayY === 'number' ? prev.displayY : pData.y;
+                                        nextRemotes[docId] = pData;
+                                        count++;
+                                    }
+                                });
+                            }
+                        } else {
+                            const pResp = await fetch(`${RTDB_FALLBACK_BASE}/rooms/${safeRoom}/players.json`);
+                            if (pResp.ok) {
+                                const allPlayers = (await pResp.json()) || {};
+                                Object.entries(allPlayers).forEach(([docId, pData]) => {
+                                    if (docId === currentUserId || !pData) return;
+                                    if (now - (pData.lastSeen || 0) < 20000) {
+                                        const prev = remotePlayers[docId];
+                                        pData.displayX = prev && typeof prev.displayX === 'number' ? prev.displayX : pData.x;
+                                        pData.displayY = prev && typeof prev.displayY === 'number' ? prev.displayY : pData.y;
+                                        nextRemotes[docId] = pData;
+                                        count++;
+                                    }
+                                });
+                            }
                         }
 
+                        remotePlayers = nextRemotes;
+                        document.getElementById('hud-online-count').textContent = count;
+                        if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
+
                         if (pollTick % 4 === 0) {
-                            const rResp = await fetch(roomUrl);
-                            if (rResp.ok) {
-                                const d = fromFsFields(await rResp.json());
-                                if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
-                                    showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
-                                    buildMap(d.mapIndex);
+                            if (!useRtdbFallback) {
+                                const rResp = await fetch(roomUrl);
+                                if (rResp.ok) {
+                                    const d = fromFsFields(await rResp.json());
+                                    if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
+                                        showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
+                                        buildMap(d.mapIndex);
+                                    }
+                                }
+                            } else {
+                                const rResp = await fetch(`${RTDB_FALLBACK_BASE}/rooms/${safeRoom}/meta.json`);
+                                if (rResp.ok) {
+                                    const d = (await rResp.json()) || {};
+                                    if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
+                                        showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
+                                        buildMap(d.mapIndex);
+                                    }
                                 }
                             }
                         }
@@ -1306,8 +1338,8 @@
                 console.warn("Gagal sambung mabar:", err);
                 mpActive = false;
                 if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500 animate-pulse";
-                showBanner(`Koneksi Server Gagal: ${err.message.slice(0, 65)}`);
-                setTimeout(() => connectMultiplayerRoom(safeRoom), 3000);
+                showBanner(err.message);
+                setTimeout(() => connectMultiplayerRoom(safeRoom), 4000);
             }
         }
 
@@ -1316,20 +1348,15 @@
             const now = Date.now();
             if (!force && now - lastSyncTime < 180) return;
             lastSyncTime = now;
-            const pUrl = `${FS_REST_BASE}/room_${currentRoomCode}_players/${currentUserId}?${FS_KEY_PARAM}`;
-            fetch(pUrl, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(toFsFields({
-                    name: player.name,
-                    color: player.color,
-                    x: Math.round(player.x),
-                    y: Math.round(player.y),
-                    jumpZ: Math.round(player.jumpZ),
-                    mapIndex: currentMapIndex,
-                    score,
-                    lastSeen: now
-                }))
+            writePlayerState(currentRoomCode, {
+                name: player.name,
+                color: player.color,
+                x: Math.round(player.x),
+                y: Math.round(player.y),
+                jumpZ: Math.round(player.jumpZ),
+                mapIndex: currentMapIndex,
+                score,
+                lastSeen: now
             }).catch(() => {});
         }
 
@@ -1339,12 +1366,20 @@
 
         function syncMultiplayerMapChange(nextIdx) {
             if (!mpActive) return;
-            const roomUrl = `${FS_REST_BASE}/rooms/${currentRoomCode}?${FS_KEY_PARAM}`;
-            fetch(roomUrl, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(toFsFields({ mapIndex: nextIdx, updatedAt: Date.now() }))
-            }).catch(() => {});
+            if (!useRtdbFallback) {
+                const roomUrl = `${FS_REST_BASE}/rooms/${currentRoomCode}?${FS_KEY_PARAM}`;
+                fetch(roomUrl, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(toFsFields({ mapIndex: nextIdx, updatedAt: Date.now() }))
+                }).catch(() => {});
+            } else {
+                fetch(`${RTDB_FALLBACK_BASE}/rooms/${currentRoomCode}/meta.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mapIndex: nextIdx, updatedAt: Date.now() })
+                }).catch(() => {});
+            }
         }
 
         // --- KONTROL KEYBOARD & SENTUH ---
