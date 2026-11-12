@@ -261,8 +261,7 @@
         };
 
         let db = null;
-        let auth = null;
-        let currentUser = null;
+        let currentUserId = "hero_" + Math.random().toString(36).substring(2, 10) + "_" + Date.now().toString(36);
         let mpActive = false;
         let currentRoomCode = "PUBLIK";
         let remotePlayers = {};
@@ -272,23 +271,13 @@
 
         async function initFirebaseMP() {
             try {
-                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-                const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
                 const { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
 
                 window._fs = { doc, setDoc, getDoc, onSnapshot, collection, updateDoc };
                 const cfg = (typeof __firebase_config !== 'undefined') ? JSON.parse(__firebase_config) : firebaseConfig;
-                const app = initializeApp(cfg);
-                auth = getAuth(app);
+                const app = getApps().length ? getApps()[0] : initializeApp(cfg);
                 db = getFirestore(app);
-
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
-                    currentUser = cred.user;
-                } else {
-                    const cred = await signInAnonymously(auth);
-                    currentUser = cred.user;
-                }
             } catch (err) {
                 console.warn("Mode Offline / Solo aktif:", err);
                 db = null;
@@ -1172,16 +1161,18 @@
         // --- MULTIPLAYER SINKRONISASI ---
         async function connectMultiplayerRoom(roomCode) {
             const dotEl = document.getElementById('hud-mp-dot');
-            if (!db || !currentUser || !window._fs) {
+            if (!db || !window._fs) {
                 if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500";
-                showBanner("Server Multiplayer belum aktif (Cek Anonymous Auth & Authorized Domain di Firebase)!");
+                showBanner("Gagal memuat SDK Firestore. Cek koneksi internet!");
                 return;
             }
             const { doc, setDoc, getDoc, onSnapshot, collection } = window._fs;
             const appId = (typeof __app_id !== 'undefined') ? __app_id : 'petualangan-ulangan';
+            const safeRoom = roomCode.replace(/[^A-Z0-9_-]/g, '') || 'PUBLIK';
+            currentRoomCode = safeRoom;
 
             try {
-                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomCode);
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', safeRoom);
                 const snap = await getDoc(roomRef);
                 if (!snap.exists()) {
                     await setDoc(roomRef, { mapIndex: 0, updatedAt: Date.now() });
@@ -1197,7 +1188,7 @@
                 syncMultiplayerPosition();
                 if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
                 document.getElementById('hud-room-badge').classList.remove('hidden');
-                document.getElementById('hud-room-code').textContent = roomCode;
+                document.getElementById('hud-room-code').textContent = safeRoom;
 
                 if (unsubRoom) unsubRoom();
                 unsubRoom = onSnapshot(roomRef, (docSnap) => {
@@ -1209,14 +1200,14 @@
                     }
                 }, () => {});
 
-                const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_players`);
+                const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${safeRoom}_players`);
                 if (unsubPlayers) unsubPlayers();
                 unsubPlayers = onSnapshot(playersCol, (qSnap) => {
                     const now = Date.now();
                     const nextRemotes = {};
                     let count = 1;
                     qSnap.forEach(pDoc => {
-                        if (pDoc.id === currentUser.uid) return;
+                        if (pDoc.id === currentUserId) return;
                         const pData = pDoc.data();
                         if (now - (pData.lastSeen || 0) < 20000) {
                             nextRemotes[pDoc.id] = pData;
@@ -1229,18 +1220,18 @@
             } catch (err) {
                 console.warn("Gagal gabung room multiplayer:", err);
                 if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500";
-                showBanner("Koneksi Multiplayer ditolak Firebase! Cek Rules & Auth.");
+                showBanner(`Error Firestore (${err.code || 'ditolak'}): Klik Publish di tab Security Rules!`);
             }
         }
 
         function syncMultiplayerPosition() {
-            if (!mpActive || !db || !currentUser || !window._fs) return;
+            if (!mpActive || !db || !window._fs) return;
             const now = Date.now();
             if (now - lastSyncTime < 160) return;
             lastSyncTime = now;
             const { doc, setDoc } = window._fs;
             const appId = (typeof __app_id !== 'undefined') ? __app_id : 'petualangan-ulangan';
-            const pRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomCode}_players`, currentUser.uid);
+            const pRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomCode}_players`, currentUserId);
             setDoc(pRef, {
                 name: player.name,
                 color: player.color,
@@ -1258,7 +1249,7 @@
         }
 
         function syncMultiplayerMapChange(nextIdx) {
-            if (!mpActive || !db || !currentUser || !window._fs) return;
+            if (!mpActive || !db || !window._fs) return;
             const { doc, setDoc } = window._fs;
             const appId = (typeof __app_id !== 'undefined') ? __app_id : 'petualangan-ulangan';
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomCode);
