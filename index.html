@@ -270,22 +270,9 @@
         let lastSyncTime = 0;
 
         async function initFirebaseMP() {
-            try {
-                const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-                const { initializeFirestore, getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-
-                window._fs = { doc, setDoc, getDoc, onSnapshot, collection, updateDoc };
-                const cfg = (typeof __firebase_config !== 'undefined') ? JSON.parse(__firebase_config) : firebaseConfig;
-                const app = getApps().length ? getApps()[0] : initializeApp(cfg);
-                try {
-                    db = initializeFirestore(app, { experimentalForceLongPolling: true });
-                } catch (e) {
-                    db = getFirestore(app);
-                }
-            } catch (err) {
-                console.warn("Mode Offline / Solo aktif:", err);
-                db = null;
-            }
+            // Menggunakan HTTPS REST API standar ke project Firebase kamu (bebas blokir WebChannel / unavailable)
+            db = true;
+            window._fs = true;
         }
 
         // --- INISIALISASI CANVAS & AUDIO ---
@@ -440,7 +427,7 @@
             y: MAP_HEIGHT - 220,
             width: 34,
             height: 34,
-            speed: 4.5,
+            speed: 3.35,
             dirX: 0,
             dirY: 1,
             walkCycle: 0,
@@ -556,8 +543,8 @@
                         y: 360 + (i % 2) * 320,
                         width: 56,
                         height: 36,
-                        vx: (i % 2 === 0 ? 1 : -1) * (2.2 + mapIdx * 0.25),
-                        vy: (i % 2 === 0 ? 1 : -1) * 1.4,
+                        vx: (i % 2 === 0 ? 1 : -1) * (1.65 + mapIdx * 0.18),
+                        vy: (i % 2 === 0 ? 1 : -1) * 1.05,
                         type: theme.hazardType
                     });
                 }
@@ -580,8 +567,8 @@
                 y: my,
                 width: 40,
                 height: 40,
-                vx: (Math.random() > 0.5 ? 1 : -1) * (1.1 + Math.random() * 0.9),
-                vy: (Math.random() > 0.5 ? 1 : -1) * (1.1 + Math.random() * 0.9),
+                vx: (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.65),
+                vy: (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.65),
                 name: theme.monsterName,
                 color: theme.monsterColor,
                 type: theme.monsterType,
@@ -753,8 +740,8 @@
                 const dist = Math.hypot(player.x - h.x, player.y - h.y);
                 if (dist < 280 && player.invulnTimer === 0) {
                     const ang = Math.atan2(player.y - h.y, player.x - h.x);
-                    h.x += Math.cos(ang) * 2.5 * dt;
-                    h.y += Math.sin(ang) * 2.5 * dt;
+                    h.x += Math.cos(ang) * 1.85 * dt;
+                    h.y += Math.sin(ang) * 1.85 * dt;
                 } else {
                     h.x += h.vx * dt;
                     h.y += h.vy * dt;
@@ -1138,32 +1125,36 @@
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // Titik Monster di Mini-map
+            // Titik Peti pada Mini-map
+            ctx.fillStyle = chest.unlocked ? "#fbbf24" : "#94a3b8";
+            ctx.fillRect(mmX + ((chest.x + chest.width / 2) / MAP_WIDTH) * mmW - 3, mmY + ((chest.y + chest.height / 2) / MAP_HEIGHT) * mmH - 3, 6, 6);
+
+            // Titik Monster pada Mini-map
+            ctx.fillStyle = "#22c55e";
             monsters.forEach(m => {
                 if (m.defeated) return;
-                ctx.fillStyle = m.color;
                 ctx.beginPath();
-                ctx.arc(mmX + (m.x / MAP_WIDTH) * mmW, mmY + (m.y / MAP_HEIGHT) * mmH, 3, 0, Math.PI * 2);
+                ctx.arc(mmX + (m.x / MAP_WIDTH) * mmW, mmY + (m.y / MAP_HEIGHT) * mmH, 2.5, 0, Math.PI * 2);
                 ctx.fill();
             });
 
-            // Titik Pemain Lain (Multiplayer) di Mini-map
+            // Titik Rekan Pemain Multiplayer pada Mini-map
             Object.values(remotePlayers).forEach(rp => {
                 if (rp.mapIndex !== currentMapIndex) return;
-                ctx.fillStyle = "#4ade80";
+                ctx.fillStyle = rp.color || "#a855f7";
                 ctx.beginPath();
-                ctx.arc(mmX + (rp.x / MAP_WIDTH) * mmW, mmY + (rp.y / MAP_HEIGHT) * mmH, 3.5, 0, Math.PI * 2);
+                ctx.arc(mmX + (rp.x / MAP_WIDTH) * mmW, mmY + (rp.y / MAP_HEIGHT) * mmH, 3.2, 0, Math.PI * 2);
                 ctx.fill();
             });
 
-            // Titik Pemain di Mini-map
+            // Titik Pemain Utama pada Mini-map
             ctx.fillStyle = "#38bdf8";
             ctx.beginPath();
-            ctx.arc(mmX + (player.x / MAP_WIDTH) * mmW, mmY + (player.y / MAP_HEIGHT) * mmH, 3.5, 0, Math.PI * 2);
+            ctx.arc(mmX + (player.x / MAP_WIDTH) * mmW, mmY + (player.y / MAP_HEIGHT) * mmH, 3.8, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        function gameLoop(now = performance.now()) {
+        function gameLoop(now) {
             const rawDt = (now - lastFrameTime) / (1000 / 60);
             lastFrameTime = now;
             const dt = Math.min(Math.max(rawDt, 0.25), 2.0);
@@ -1172,29 +1163,54 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // --- MULTIPLAYER SINKRONISASI ---
+        // --- MULTIPLAYER SINKRONISASI (HTTPS REST API) ---
+        const FS_REST_BASE = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
+        let pollIntervalId = null;
+
+        function toFsFields(obj) {
+            const fields = {};
+            for (const [k, v] of Object.entries(obj)) {
+                if (typeof v === 'number') {
+                    fields[k] = Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+                } else {
+                    fields[k] = { stringValue: String(v) };
+                }
+            }
+            return { fields };
+        }
+
+        function fromFsFields(docObj) {
+            const res = {};
+            const f = docObj?.fields || {};
+            for (const [k, v] of Object.entries(f)) {
+                if ('integerValue' in v) res[k] = Number(v.integerValue);
+                else if ('doubleValue' in v) res[k] = Number(v.doubleValue);
+                else if ('stringValue' in v) res[k] = v.stringValue;
+            }
+            return res;
+        }
+
         async function connectMultiplayerRoom(roomCode) {
             const dotEl = document.getElementById('hud-mp-dot');
-            if (!db || !window._fs) {
-                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500";
-                showBanner("Gagal memuat SDK Firestore. Cek koneksi internet!");
-                return;
-            }
-            const { doc, setDoc, getDoc, onSnapshot, collection } = window._fs;
-            const appId = (typeof __app_id !== 'undefined') ? __app_id : 'petualangan-ulangan';
             const safeRoom = roomCode.replace(/[^A-Z0-9_-]/g, '') || 'PUBLIK';
             currentRoomCode = safeRoom;
 
             try {
-                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', safeRoom);
-                const snap = await getDoc(roomRef);
-                if (!snap.exists()) {
-                    await setDoc(roomRef, { mapIndex: 0, updatedAt: Date.now() });
-                } else {
-                    const data = snap.data();
-                    if (typeof data.mapIndex === 'number' && data.mapIndex !== currentMapIndex) {
+                const roomUrl = `${FS_REST_BASE}/artifacts/petualangan-ulangan/public/data/rooms/${safeRoom}`;
+                const res = await fetch(roomUrl);
+                if (res.status === 404) {
+                    await fetch(roomUrl, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(toFsFields({ mapIndex: 0, updatedAt: Date.now() }))
+                    });
+                } else if (res.ok) {
+                    const data = fromFsFields(await res.json());
+                    if (typeof data.mapIndex === 'number' && data.mapIndex !== currentMapIndex && data.mapIndex < MAP_THEMES.length) {
                         buildMap(data.mapIndex);
                     }
+                } else {
+                    throw new Error(`HTTP ${res.status}`);
                 }
 
                 mpActive = true;
@@ -1204,59 +1220,68 @@
                 document.getElementById('hud-room-badge').classList.remove('hidden');
                 document.getElementById('hud-room-code').textContent = safeRoom;
 
-                if (unsubRoom) unsubRoom();
-                unsubRoom = onSnapshot(roomRef, (docSnap) => {
-                    if (!docSnap.exists()) return;
-                    const d = docSnap.data();
-                    if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
-                        showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
-                        buildMap(d.mapIndex);
-                    }
-                }, () => {});
-
-                const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${safeRoom}_players`);
-                if (unsubPlayers) unsubPlayers();
-                unsubPlayers = onSnapshot(playersCol, (qSnap) => {
-                    const now = Date.now();
-                    const nextRemotes = {};
-                    let count = 1;
-                    qSnap.forEach(pDoc => {
-                        if (pDoc.id === currentUserId) return;
-                        const pData = pDoc.data();
-                        if (now - (pData.lastSeen || 0) < 20000) {
-                            nextRemotes[pDoc.id] = pData;
-                            count++;
+                if (pollIntervalId) clearInterval(pollIntervalId);
+                pollIntervalId = setInterval(async () => {
+                    if (!mpActive) return;
+                    try {
+                        const [rResp, pResp] = await Promise.all([
+                            fetch(roomUrl),
+                            fetch(`${FS_REST_BASE}/artifacts/petualangan-ulangan/public/data/room_${safeRoom}_players`)
+                        ]);
+                        if (rResp.ok) {
+                            const d = fromFsFields(await rResp.json());
+                            if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
+                                showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
+                                buildMap(d.mapIndex);
+                            }
                         }
-                    });
-                    remotePlayers = nextRemotes;
-                    document.getElementById('hud-online-count').textContent = count;
-                }, () => {});
+                        if (pResp.ok) {
+                            const listData = await pResp.json();
+                            const docs = listData.documents || [];
+                            const now = Date.now();
+                            const nextRemotes = {};
+                            let count = 1;
+                            docs.forEach(docItem => {
+                                const docId = docItem.name.split('/').pop();
+                                if (docId === currentUserId) return;
+                                const pData = fromFsFields(docItem);
+                                if (now - (pData.lastSeen || 0) < 20000) {
+                                    nextRemotes[docId] = pData;
+                                    count++;
+                                }
+                            });
+                            remotePlayers = nextRemotes;
+                            document.getElementById('hud-online-count').textContent = count;
+                        }
+                    } catch (e) {}
+                }, 850);
             } catch (err) {
-                console.warn("Gagal gabung room multiplayer:", err);
+                console.warn("Mencoba sambung ulang mabar:", err);
                 if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-                showBanner("Mencoba menyambungkan ulang ke server mabar...");
-                setTimeout(() => connectMultiplayerRoom(safeRoom), 3500);
+                setTimeout(() => connectMultiplayerRoom(safeRoom), 3000);
             }
         }
 
         function syncMultiplayerPosition() {
-            if (!mpActive || !db || !window._fs) return;
+            if (!mpActive) return;
             const now = Date.now();
-            if (now - lastSyncTime < 160) return;
+            if (now - lastSyncTime < 450) return;
             lastSyncTime = now;
-            const { doc, setDoc } = window._fs;
-            const appId = (typeof __app_id !== 'undefined') ? __app_id : 'petualangan-ulangan';
-            const pRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomCode}_players`, currentUserId);
-            setDoc(pRef, {
-                name: player.name,
-                color: player.color,
-                x: Math.round(player.x),
-                y: Math.round(player.y),
-                jumpZ: Math.round(player.jumpZ),
-                mapIndex: currentMapIndex,
-                score,
-                lastSeen: now
-            }, { merge: true }).catch(() => {});
+            const pUrl = `${FS_REST_BASE}/artifacts/petualangan-ulangan/public/data/room_${currentRoomCode}_players/${currentUserId}`;
+            fetch(pUrl, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(toFsFields({
+                    name: player.name,
+                    color: player.color,
+                    x: Math.round(player.x),
+                    y: Math.round(player.y),
+                    jumpZ: Math.round(player.jumpZ),
+                    mapIndex: currentMapIndex,
+                    score,
+                    lastSeen: now
+                }))
+            }).catch(() => {});
         }
 
         function syncMultiplayerProgress() {
@@ -1264,11 +1289,13 @@
         }
 
         function syncMultiplayerMapChange(nextIdx) {
-            if (!mpActive || !db || !window._fs) return;
-            const { doc, setDoc } = window._fs;
-            const appId = (typeof __app_id !== 'undefined') ? __app_id : 'petualangan-ulangan';
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomCode);
-            setDoc(roomRef, { mapIndex: nextIdx, updatedAt: Date.now() }, { merge: true }).catch(() => {});
+            if (!mpActive) return;
+            const roomUrl = `${FS_REST_BASE}/artifacts/petualangan-ulangan/public/data/rooms/${currentRoomCode}`;
+            fetch(roomUrl, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(toFsFields({ mapIndex: nextIdx, updatedAt: Date.now() }))
+            }).catch(() => {});
         }
 
         // --- KONTROL KEYBOARD & SENTUH ---
