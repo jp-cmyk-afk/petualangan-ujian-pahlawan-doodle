@@ -73,6 +73,10 @@
                     <i class="fa-solid fa-ghost text-emerald-400"></i>
                     <span>MONSTER: <span id="hud-monsters" class="text-emerald-400 font-bold font-pixel text-[11px]">0/10</span></span>
                 </div>
+                <div id="hud-room-badge" class="hidden flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-cyan-500/40">
+                    <i class="fa-solid fa-users text-cyan-400"></i>
+                    <span>ROOM: <span id="hud-room-code" class="text-cyan-300 font-bold font-pixel text-[11px]">SOLO</span> (<span id="hud-online-count" class="text-emerald-400">1</span>)</span>
+                </div>
             </div>
 
             <div class="flex items-center gap-2">
@@ -135,6 +139,16 @@
                     <div class="text-left">
                         <label for="player-name-input" class="block text-xs font-bold text-slate-300 mb-1">Nama Petualang:</label>
                         <input type="text" id="player-name-input" maxlength="14" placeholder="Masukkan namamu (contoh: Budi)..." class="w-full px-4 py-2.5 bg-slate-900 border-2 border-slate-700 rounded-xl text-center text-white focus:outline-none focus:border-amber-400 font-bold text-sm placeholder:text-slate-500">
+                    </div>
+                    <div class="text-left">
+                        <label for="room-code-input" class="block text-xs font-bold text-cyan-300 mb-1">Mode Server Multiplayer:</label>
+                        <div class="flex gap-1.5">
+                            <input type="text" id="room-code-input" maxlength="10" placeholder="Otomatis Lobi Publik (atau isi Kode Privat)" class="w-full px-3 py-2 bg-slate-900 border-2 border-slate-700 rounded-xl text-center text-cyan-300 uppercase focus:outline-none focus:border-cyan-400 font-bold text-xs placeholder:text-slate-400">
+                            <button id="btn-gen-room" type="button" title="Buat Kode Room Privat" class="px-3 py-2 bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-500/50 rounded-xl text-cyan-300 text-xs font-bold cursor-pointer whitespace-nowrap">
+                                <i class="fa-solid fa-lock"></i> Privat
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-emerald-300 mt-1"><i class="fa-solid fa-globe mr-1"></i>Biarkan kosong untuk otomatis mabar bersama pemain lain yang sedang online!</p>
                     </div>
                     <p class="text-[11px] text-slate-400 italic">
                         <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1"></i>Warna kostum karakter dipilih otomatis secara acak!
@@ -228,7 +242,193 @@
         </footer>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // =========================================================================
+        // 0. INISIALISASI KONEKSI MULTIPLAYER REAL-TIME
+        // =========================================================================
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'adventure-quiz-sd2';
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let isMultiplayer = false;
+        let roomCode = '';
+        let isRoomHost = false;
+        let remotePlayers = {};
+        let unsubRoom = null;
+        let unsubPlayers = null;
+        let lastSyncTime = 0;
+
+        async function initMultiplayerBackend() {
+            try {
+                if (typeof __firebase_config === 'undefined' || !__firebase_config) return false;
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                }
+                return !!currentUser;
+            } catch (err) {
+                console.warn("Berjalan dalam mode offline/solo:", err);
+                return false;
+            }
+        }
+
+        function cleanupMultiplayerListeners() {
+            if (unsubRoom) { unsubRoom(); unsubRoom = null; }
+            if (unsubPlayers) { unsubPlayers(); unsubPlayers = null; }
+            remotePlayers = {};
+        }
+
+        async function syncLocalPlayerState(force = false) {
+            if (!isMultiplayer || !db || !currentUser || !roomCode) return;
+            const now = Date.now();
+            if (!force && now - lastSyncTime < 90) return;
+            lastSyncTime = now;
+
+            try {
+                const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_players`, currentUser.uid);
+                await setDoc(playerDocRef, {
+                    uid: currentUser.uid,
+                    name: player.name,
+                    color: player.color,
+                    x: Math.round(player.x),
+                    y: Math.round(player.y),
+                    jumpZ: Math.round(player.jumpZ),
+                    facing: player.facing,
+                    map: currentMap,
+                    score: score,
+                    lastSeen: now
+                }, { merge: true });
+            } catch (e) {
+                // Abaikan error jaringan sesaat
+            }
+        }
+
+        async function broadcastRoomWorldState() {
+            if (!isMultiplayer || !db || !currentUser || !roomCode) return;
+            try {
+                const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'quiz_rooms', roomCode);
+                await setDoc(roomDocRef, {
+                    currentMap,
+                    defeatedCount,
+                    portalActive: portal.active,
+                    monstersJson: JSON.stringify(quizMonsters),
+                    updatedAt: Date.now()
+                }, { merge: true });
+            } catch (e) {
+                // Abaikan error sinkronisasi sesaat
+            }
+        }
+
+        async function setupMultiplayerRoom(code) {
+            cleanupMultiplayerListeners();
+            const ready = await initMultiplayerBackend();
+            if (!ready) {
+                isMultiplayer = false;
+                showToast("Server multiplayer tidak tersedia, beralih ke mode Solo!", "danger");
+                buildMap(1);
+                return;
+            }
+
+            isMultiplayer = true;
+            roomCode = code;
+            document.getElementById('hud-room-badge').classList.remove('hidden');
+            document.getElementById('hud-room-code').textContent = code === 'LOBI-PUBLIK' ? 'PUBLIK' : roomCode;
+
+            const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'quiz_rooms', roomCode);
+            const existingSnap = await getDoc(roomDocRef);
+
+            if (!existingSnap.exists()) {
+                isRoomHost = true;
+                buildMap(1);
+                await broadcastRoomWorldState();
+                showToast(code === 'LOBI-PUBLIK' ? "Terhubung ke Lobi Publik Otomatis!" : `Room ${roomCode} dibuat!`, "success");
+            } else {
+                isRoomHost = false;
+                const data = existingSnap.data();
+                currentMap = data.currentMap || 1;
+                buildMap(currentMap);
+                if (data.monstersJson) {
+                    try {
+                        quizMonsters = JSON.parse(data.monstersJson);
+                    } catch (e) {}
+                }
+                defeatedCount = data.defeatedCount || 0;
+                portal.active = !!data.portalActive;
+                updateHud();
+                showToast(code === 'LOBI-PUBLIK' ? `Otomatis bergabung ke Lobi Publik (Map ${currentMap}/5)!` : `Bergabung ke Room ${roomCode} (Map ${currentMap}/5)!`, "success");
+            }
+
+            // Dengarkan perubahan progres dunia bersama (monster kalah, ganti map, portal aktif)
+            unsubRoom = onSnapshot(roomDocRef, (snap) => {
+                if (!snap.exists()) return;
+                const data = snap.data();
+
+                if (data.currentMap && data.currentMap !== currentMap) {
+                    currentMap = data.currentMap;
+                    document.getElementById('quiz-modal').classList.add('hidden');
+                    activeQuizIdx = -1;
+                    buildMap(currentMap);
+                    showToast(`Tim berpindah ke Map ${currentMap}/5!`, "success");
+                }
+
+                if (data.monstersJson) {
+                    try {
+                        const syncedMonsters = JSON.parse(data.monstersJson);
+                        if (Array.isArray(syncedMonsters) && syncedMonsters.length === quizMonsters.length) {
+                            syncedMonsters.forEach((sm, i) => {
+                                if (sm.defeated && !quizMonsters[i].defeated) {
+                                    quizMonsters[i].defeated = true;
+                                }
+                            });
+                        }
+                    } catch (e) {}
+                }
+
+                if (typeof data.defeatedCount === 'number') {
+                    defeatedCount = data.defeatedCount;
+                }
+                if (typeof data.portalActive === 'boolean') {
+                    if (data.portalActive && !portal.active) {
+                        showToast("10/10 Monster Kalah! Peti Hadiah Level Up terbuka!", "success");
+                    }
+                    portal.active = data.portalActive;
+                }
+                updateHud();
+            }, (err) => console.warn(err));
+
+            // Dengarkan posisi & animasi pemain lain di dalam room
+            const playersColRef = collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_players`);
+            unsubPlayers = onSnapshot(playersColRef, (snapshot) => {
+                const now = Date.now();
+                const updatedRemote = {};
+                let activeCount = 1;
+
+                snapshot.forEach((docSnap) => {
+                    const p = docSnap.data();
+                    if (p.uid !== currentUser.uid && (now - (p.lastSeen || 0)) < 25000) {
+                        updatedRemote[p.uid] = p;
+                        activeCount++;
+                    }
+                });
+                remotePlayers = updatedRemote;
+                document.getElementById('hud-online-count').textContent = activeCount;
+            }, (err) => console.warn(err));
+
+            await syncLocalPlayerState(true);
+        }
+
         // =========================================================================
         // 1. KONFIGURASI UTAMA & VARIABEL GLOBAL
         // =========================================================================
@@ -803,121 +1003,11 @@
                     portal.active = true;
                     showToast("10/10 Monster Kalah! Peti Harta Karun Besar muncul di tengah-atas peta!", "success");
                 }
-// ... existing code ... -->
-            // Peti Harta Karun Besar Level Up 64-Bit (Menggantikan Portal)
-            if (portal.active) {
-                const now = Date.now();
-                const pulse = Math.sin(now / 150) * 6;
-                const distToPlayer = dist(player.x + player.width / 2, player.y + player.height / 2, portal.x, portal.y);
-                const isNear = distToPlayer < 135;
 
-                // Aura Cahaya Emas Berkilau di Belakang Peti
-                const pGrad = ctx.createRadialGradient(portal.x, portal.y, 6, portal.x, portal.y, portal.radius + pulse + 16);
-                pGrad.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
-                pGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.55)');
-                pGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
-
-                ctx.beginPath();
-                ctx.arc(portal.x, portal.y, portal.radius + pulse + 16, 0, Math.PI * 2);
-                ctx.fillStyle = pGrad;
-                ctx.fill();
-
-                // Bayangan Bawah Peti Besar
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                ctx.beginPath();
-                ctx.ellipse(portal.x, portal.y + 28, 38, 10, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                const cw = 68;
-                const ch = 48;
-                const cx = portal.x - cw / 2;
-                const cy = portal.y - ch / 2 + 4;
-
-                // Badan Peti Kayu Jati & Bingkai Emas
-                const woodGrad = ctx.createLinearGradient(cx, cy, cx, cy + ch);
-                woodGrad.addColorStop(0, '#b45309');
-                woodGrad.addColorStop(1, '#451a03');
-                ctx.fillStyle = woodGrad;
-                drawRoundedRect(cx, cy + 12, cw, ch - 12, 7);
-                ctx.fill();
-                ctx.strokeStyle = '#fbbf24';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-
-                // Sabuk Logam Emas Vertikal
-                ctx.fillStyle = '#f59e0b';
-                ctx.fillRect(cx + 10, cy + 12, 6, ch - 12);
-                ctx.fillRect(cx + cw - 16, cy + 12, 6, ch - 12);
-
-                if (isNear) {
-                    // Tutup Peti Terbuka + Kilau Permata & Koin Emas di Dalamnya!
-                    ctx.fillStyle = '#fef08a';
-                    ctx.beginPath();
-                    ctx.ellipse(portal.x, cy + 12, 26, 8, 0, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Permata Biru & Merah di Tengah Peti
-                    ctx.fillStyle = '#38bdf8';
-                    ctx.beginPath();
-                    ctx.arc(portal.x - 9, cy + 10, 4.5, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#f43f5e';
-                    ctx.beginPath();
-                    ctx.arc(portal.x + 9, cy + 10, 4.5, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Tutup Atas Terangkat
-                    ctx.fillStyle = '#92400e';
-                    drawRoundedRect(cx - 2, cy - 10, cw + 4, 18, 7);
-                    ctx.fill();
-                    ctx.strokeStyle = '#fde047';
-                    ctx.lineWidth = 2.5;
-                    ctx.stroke();
-                } else {
-                    // Tutup Peti Tertutup Rapat dengan Gembok Emas Besar
-                    const lidGrad = ctx.createLinearGradient(cx, cy, cx, cy + 18);
-                    lidGrad.addColorStop(0, '#d97706');
-                    lidGrad.addColorStop(1, '#78350f');
-                    ctx.fillStyle = lidGrad;
-                    drawRoundedRect(cx - 2, cy, cw + 4, 18, 7);
-                    ctx.fill();
-                    ctx.strokeStyle = '#fde047';
-                    ctx.lineWidth = 2.5;
-                    ctx.stroke();
-
-                    // Gembok Emas di Tengah
-                    ctx.fillStyle = '#fef08a';
-                    drawRoundedRect(portal.x - 7, cy + 11, 14, 13, 3);
-                    ctx.fill();
-                    ctx.strokeStyle = '#92400e';
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
+                if (isMultiplayer) {
+                    broadcastRoomWorldState();
+                    syncLocalPlayerState(true);
                 }
-
-                // Partikel Bintang Berkilau di Sekitar Peti
-                for (let s = 0; s < 4; s++) {
-                    const angle = (now / 600) + (s * Math.PI / 2);
-                    const sx = portal.x + Math.cos(angle) * 44;
-                    const sy = portal.y + Math.sin(angle) * 32;
-                    ctx.fillStyle = '#fef08a';
-                    ctx.beginPath();
-                    ctx.arc(sx, sy, 2.5 + Math.sin(now / 120 + s) * 1.2, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                // Label Peti Hadiah
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-                ctx.strokeStyle = '#fbbf24';
-                ctx.lineWidth = 1.5;
-                drawRoundedRect(portal.x - 68, portal.y - 46, 136, 20, 8);
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.fillStyle = '#fde047';
-                ctx.font = 'bold 11px Fredoka, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('PETI HADIAH LEVEL UP', portal.x, portal.y - 32);
-            }
 
                 setTimeout(() => {
                     document.getElementById('quiz-modal').classList.add('hidden');
@@ -935,6 +1025,10 @@
                 monster.y = freshPos.y;
                 monster.question = getRandomQuestion();
                 player.invulnTimer = 90;
+
+                if (isMultiplayer) {
+                    broadcastRoomWorldState();
+                }
 
                 setTimeout(() => {
                     document.getElementById('quiz-modal').classList.add('hidden');
@@ -1108,12 +1202,20 @@
                         currentMap++;
                         showToast(`Selamat! Memasuki Map ${currentMap}/5!`, "success");
                         buildMap(currentMap);
+                        if (isMultiplayer) {
+                            broadcastRoomWorldState();
+                            syncLocalPlayerState(true);
+                        }
                     } else {
                         gameRunning = false;
                         document.getElementById('victory-score').textContent = score;
                         document.getElementById('overlay-victory').classList.remove('hidden');
                     }
                 }
+            }
+
+            if (isMultiplayer) {
+                syncLocalPlayerState(false);
             }
         }
 
@@ -1536,6 +1638,85 @@
                 });
             }
 
+            // Render Pemain Lain (Multiplayer Online) di Peta yang Sama
+            if (isMultiplayer) {
+                Object.values(remotePlayers).forEach(rp => {
+                    if (rp.map !== currentMap) return;
+                    const rJump = rp.jumpZ || 0;
+                    const rpy = rp.y - rJump;
+                    const now = Date.now();
+                    const scarfWave = Math.sin(now / 120 + rp.x) * 3;
+                    const scarfDir = rp.facing === 'right' ? -1 : 1;
+
+                    // Bayangan
+                    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                    ctx.beginPath();
+                    ctx.ellipse(rp.x + 17, rp.y + 35, 16, 5.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Syal
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath();
+                    ctx.moveTo(rp.x + 17, rpy + 12);
+                    ctx.lineTo(rp.x + 17 + (18 * scarfDir), rpy + 20 + scarfWave);
+                    ctx.lineTo(rp.x + 17 + (10 * scarfDir), rpy + 22);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Badan Kostum
+                    const rBodyGrad = ctx.createLinearGradient(rp.x, rpy + 11, rp.x + 34, rpy + 31);
+                    rBodyGrad.addColorStop(0, '#ffffff');
+                    rBodyGrad.addColorStop(0.25, rp.color || '#10b981');
+                    rBodyGrad.addColorStop(1, '#0f172a');
+                    ctx.fillStyle = rBodyGrad;
+                    drawRoundedRect(rp.x + 3, rpy + 11, 28, 20, 8);
+                    ctx.fill();
+
+                    // Pedang & Tameng Teman
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillRect(rp.x + 32, rpy + 4, 3.5, 18);
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.fillRect(rp.x + 29.5, rpy + 18, 8.5, 2.5);
+
+                    ctx.fillStyle = '#0284c7';
+                    drawRoundedRect(rp.x - 4, rpy + 13, 9, 13, 3);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Kepala & Mata
+                    ctx.fillStyle = '#fde68a';
+                    ctx.beginPath();
+                    ctx.arc(rp.x + 17, rpy + 8, 11, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#451a03';
+                    ctx.beginPath();
+                    ctx.arc(rp.x + 17, rpy + 5.5, 11.2, Math.PI * 0.92, Math.PI * 0.08);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.arc(rp.x + 13, rpy + 9, 1.8, 0, Math.PI * 2);
+                    ctx.arc(rp.x + 21, rpy + 9, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Lencana Nama Teman (Warna Cyan)
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 1.2;
+                    drawRoundedRect(rp.x - 24, rpy - 25, 82, 17, 7);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#7dd3fc';
+                    ctx.font = 'bold 10px Fredoka, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(rp.name || 'Teman', rp.x + 17, rpy - 13);
+                });
+            }
+
             // Karakter Pemain 64-Bit RPG (Pedang, Tameng, Syal Berkibar, & Ekspresi Dinamis)
             const hideOnBlink = player.invulnTimer > 0 && Math.floor(player.invulnTimer / 6) % 2 === 0;
             if (!hideOnBlink) {
@@ -1803,6 +1984,18 @@
             crocodiles.forEach(c => ctx.fillRect(mmX + c.x * mmScale - 2, mmY + c.y * mmScale - 2, 4, 4));
             tigers.forEach(t => ctx.fillRect(mmX + t.x * mmScale - 2, mmY + t.y * mmScale - 2, 4, 4));
 
+            // Posisi Teman Multiplayer pada Mini-map (Titik Hijau Neon)
+            if (isMultiplayer) {
+                ctx.fillStyle = '#4ade80';
+                Object.values(remotePlayers).forEach(rp => {
+                    if (rp.map === currentMap) {
+                        ctx.beginPath();
+                        ctx.arc(mmX + (rp.x + 17) * mmScale, mmY + (rp.y + 17) * mmScale, 3.3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            }
+
             // Posisi Pemain pada Mini-map (Titik Biru Terang)
             ctx.fillStyle = '#38bdf8';
             ctx.beginPath();
@@ -1830,11 +2023,14 @@
             }
         }
 
-        function startGame() {
+        async function startGame() {
             initAudio();
 
             const rawName = document.getElementById('player-name-input').value.trim();
             player.name = rawName || 'Petualang';
+
+            const rawRoom = document.getElementById('room-code-input').value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+            const targetRoom = rawRoom || 'LOBI-PUBLIK';
 
             // Warna pakaian karakter acak otomatis
             player.color = OUTFIT_COLORS[Math.floor(Math.random() * OUTFIT_COLORS.length)];
@@ -1847,12 +2043,22 @@
             document.getElementById('quiz-modal').classList.add('hidden');
 
             resizeCanvas();
-            buildMap(1);
+
+            await setupMultiplayerRoom(targetRoom);
 
             gameRunning = true;
             cancelAnimationFrame(animFrameId);
             gameLoop();
         }
+
+        document.getElementById('btn-gen-room').addEventListener('click', () => {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = 'SD2-';
+            for (let i = 0; i < 4; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('room-code-input').value = code;
+        });
 
         document.getElementById('btn-start').addEventListener('click', startGame);
         document.getElementById('btn-play-again').addEventListener('click', startGame);
@@ -1860,6 +2066,9 @@
         document.getElementById('btn-restart').addEventListener('click', () => {
             gameRunning = false;
             cancelAnimationFrame(animFrameId);
+            cleanupMultiplayerListeners();
+            isMultiplayer = false;
+            document.getElementById('hud-room-badge').classList.add('hidden');
             document.getElementById('quiz-modal').classList.add('hidden');
             document.getElementById('overlay-victory').classList.add('hidden');
             document.getElementById('overlay-start').classList.remove('hidden');
