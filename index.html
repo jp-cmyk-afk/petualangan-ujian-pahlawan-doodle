@@ -28,7 +28,12 @@
             border: 2px solid rgba(255, 255, 255, 0.15);
         }
         .game-frame {
-            height: clamp(480px, 74svh, 820px);
+            height: clamp(340px, 56svh, 760px);
+        }
+        @media (min-width: 640px) {
+            .game-frame {
+                height: clamp(480px, 72svh, 820px);
+            }
         }
         .touch-btn {
             touch-action: none;
@@ -49,33 +54,33 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-2 sm:p-4">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4">
 
     <!-- Main Wrapper -->
     <div class="relative w-full max-w-6xl flex flex-col items-center">
 
         <!-- Top HUD Bar -->
-        <div class="w-full glass-panel rounded-2xl p-2.5 sm:p-3 mb-2 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm font-semibold shadow-2xl border border-slate-700/60">
-            <div class="flex flex-wrap items-center gap-2">
-                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-purple-500/30">
+        <div class="w-full glass-panel rounded-2xl p-2 sm:p-3 mb-1.5 sm:mb-2 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 text-[11px] sm:text-sm font-semibold shadow-2xl border border-slate-700/60">
+            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <div class="flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-purple-500/30">
                     <i class="fa-solid fa-map text-purple-400"></i>
-                    <span>PETA: <span id="hud-map" class="text-purple-400 font-bold font-pixel text-[11px]">Map 1/5</span></span>
+                    <span><span class="hidden sm:inline">PETA: </span><span id="hud-map" class="text-purple-400 font-bold font-pixel text-[10px] sm:text-[11px]">Map 1/5</span></span>
                 </div>
-                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-sky-500/30">
+                <div class="flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-sky-500/30">
                     <i class="fa-solid fa-user-astronaut text-sky-400"></i>
-                    <span id="hud-player" class="text-sky-300 font-bold">Petualang</span>
+                    <span id="hud-player" class="text-sky-300 font-bold truncate max-w-[85px] sm:max-w-none">Petualang</span>
                 </div>
-                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-amber-500/30">
+                <div class="flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-amber-500/30">
                     <i class="fa-solid fa-star text-amber-400"></i>
-                    <span>SKOR: <span id="hud-score" class="text-amber-400 font-bold font-pixel text-[11px]">0</span></span>
+                    <span><span class="hidden sm:inline">SKOR: </span><span id="hud-score" class="text-amber-400 font-bold font-pixel text-[10px] sm:text-[11px]">0</span></span>
                 </div>
-                <div class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-emerald-500/30">
+                <div class="flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-emerald-500/30">
                     <i class="fa-solid fa-ghost text-emerald-400"></i>
-                    <span>MONSTER: <span id="hud-monsters" class="text-emerald-400 font-bold font-pixel text-[11px]">0/10</span></span>
+                    <span><span class="hidden sm:inline">MONSTER: </span><span id="hud-monsters" class="text-emerald-400 font-bold font-pixel text-[10px] sm:text-[11px]">0/10</span></span>
                 </div>
-                <div id="hud-room-badge" class="hidden flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-cyan-500/40">
+                <div id="hud-room-badge" class="hidden flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-cyan-500/40">
                     <i class="fa-solid fa-users text-cyan-400"></i>
-                    <span>ROOM: <span id="hud-room-code" class="text-cyan-300 font-bold font-pixel text-[11px]">SOLO</span> (<span id="hud-online-count" class="text-emerald-400">1</span>)</span>
+                    <span><span id="hud-room-code" class="text-cyan-300 font-bold font-pixel text-[10px] sm:text-[11px]">SOLO</span> (<span id="hud-online-count" class="text-emerald-400">1</span>)</span>
                 </div>
             </div>
 
@@ -466,14 +471,16 @@
         // --- RESIZE CANVAS AMAN ---
         function resizeCanvas() {
             const frame = canvas.parentElement;
-            const w = frame ? Math.max(frame.clientWidth, 320) : 800;
-            const h = frame ? Math.max(frame.clientHeight, 440) : 520;
+            const isMobile = window.innerWidth < 640;
+            const w = frame ? Math.max(frame.clientWidth, 300) : 800;
+            const h = frame ? Math.max(frame.clientHeight, isMobile ? 340 : 440) : 520;
             if (canvas.width !== w || canvas.height !== h) {
                 canvas.width = w;
                 canvas.height = h;
             }
         }
         window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
 
         function showBanner(msg, isGood = false) {
             const el = document.getElementById('event-banner');
