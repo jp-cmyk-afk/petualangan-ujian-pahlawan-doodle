@@ -346,156 +346,159 @@
 
         async function setupMultiplayerRoom(code) {
             cleanupMultiplayerListeners();
-            const ready = await initMultiplayerBackend();
-            if (!ready) {
-                isMultiplayer = false;
-                showToast("Server multiplayer tidak tersedia, beralih ke mode Solo!", "danger");
-                buildMap(1);
-                return;
-            }
-
-            isMultiplayer = true;
-            roomCode = code;
-            document.getElementById('hud-room-badge').classList.remove('hidden');
-            document.getElementById('hud-room-code').textContent = code === 'LOBI-PUBLIK' ? 'PUBLIK' : roomCode;
-
-            const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'quiz_rooms', roomCode);
-            const existingSnap = await getDoc(roomDocRef);
-
-            if (!existingSnap.exists()) {
-                isRoomHost = true;
-                buildMap(1);
-                await broadcastRoomWorldState();
-                showToast(code === 'LOBI-PUBLIK' ? "Terhubung ke Lobi Publik Otomatis!" : `Room ${roomCode} dibuat!`, "success");
-            } else {
-                isRoomHost = false;
-                const data = existingSnap.data();
-                currentMap = data.currentMap || 1;
-                buildMap(currentMap);
-                if (data.monstersJson) {
-                    try {
-                        quizMonsters = JSON.parse(data.monstersJson);
-                    } catch (e) {}
-                }
-                defeatedCount = data.defeatedCount || 0;
-                portal.active = !!data.portalActive;
-                updateHud();
-                showToast(code === 'LOBI-PUBLIK' ? `Otomatis bergabung ke Lobi Publik (Map ${currentMap}/5)!` : `Bergabung ke Room ${roomCode} (Map ${currentMap}/5)!`, "success");
-            }
-
-            // Dengarkan perubahan progres dunia bersama (monster kalah, ganti map, portal aktif)
-            unsubRoom = onSnapshot(roomDocRef, (snap) => {
-                if (!snap.exists()) return;
-                const data = snap.data();
-
-                if (data.currentMap && data.currentMap !== currentMap) {
-                    currentMap = data.currentMap;
-                    document.getElementById('quiz-modal').classList.add('hidden');
-                    activeQuizIdx = -1;
-                    buildMap(currentMap);
-                    showToast(`Tim berpindah ke Map ${currentMap}/5!`, "success");
+            try {
+                // Batas waktu 3 detik agar koneksi server tidak menahan layar game
+                const ready = await Promise.race([
+                    initMultiplayerBackend(),
+                    new Promise(resolve => setTimeout(() => resolve(false), 3000))
+                ]);
+                if (!ready) {
+                    isMultiplayer = false;
+                    showToast("Mode Solo aktif (server multiplayer belum terhubung).", "danger");
+                    return;
                 }
 
-                if (data.monstersJson) {
-                    try {
-                        const syncedMonsters = JSON.parse(data.monstersJson);
-                        if (Array.isArray(syncedMonsters) && syncedMonsters.length === quizMonsters.length) {
-                            syncedMonsters.forEach((sm, i) => {
-                                if (sm.defeated && !quizMonsters[i].defeated) {
-                                    quizMonsters[i].defeated = true;
-                                }
-                            });
+                isMultiplayer = true;
+                roomCode = code;
+                document.getElementById('hud-room-badge').classList.remove('hidden');
+                document.getElementById('hud-room-code').textContent = code === 'LOBI-PUBLIK' ? 'PUBLIK' : roomCode;
+
+                const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'quiz_rooms', roomCode);
+                const existingSnap = await getDoc(roomDocRef);
+
+                if (!existingSnap.exists()) {
+                    isRoomHost = true;
+                    await broadcastRoomWorldState();
+                    showToast(code === 'LOBI-PUBLIK' ? "Terhubung ke Lobi Publik Otomatis!" : `Room ${roomCode} dibuat!`, "success");
+                } else {
+                    isRoomHost = false;
+                    const data = existingSnap.data();
+                    if (data.currentMap && data.currentMap !== currentMap) {
+                        currentMap = data.currentMap;
+                        buildMap(currentMap);
+                    }
+                    if (data.monstersJson) {
+                        try {
+                            quizMonsters = JSON.parse(data.monstersJson);
+                        } catch (e) {}
+                    }
+                    defeatedCount = data.defeatedCount || 0;
+                    portal.active = !!data.portalActive;
+                    updateHud();
+                    showToast(code === 'LOBI-PUBLIK' ? `Otomatis bergabung ke Lobi Publik (Map ${currentMap}/5)!` : `Bergabung ke Room ${roomCode} (Map ${currentMap}/5)!`, "success");
+                }
+
+                // Dengarkan perubahan progres dunia bersama (monster kalah, ganti map, portal aktif)
+                unsubRoom = onSnapshot(roomDocRef, (snap) => {
+                    if (!snap.exists()) return;
+                    const data = snap.data();
+
+                    if (data.currentMap && data.currentMap !== currentMap) {
+                        currentMap = data.currentMap;
+                        document.getElementById('quiz-modal').classList.add('hidden');
+                        activeQuizIdx = -1;
+                        buildMap(currentMap);
+                        showToast(`Tim berpindah ke Map ${currentMap}/5!`, "success");
+                    }
+
+                    if (data.monstersJson) {
+                        try {
+                            const syncedMonsters = JSON.parse(data.monstersJson);
+                            if (Array.isArray(syncedMonsters) && syncedMonsters.length === quizMonsters.length) {
+                                syncedMonsters.forEach((sm, i) => {
+                                    if (sm.defeated && !quizMonsters[i].defeated) {
+                                        quizMonsters[i].defeated = true;
+                                    }
+                                });
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (typeof data.defeatedCount === 'number') {
+                        defeatedCount = data.defeatedCount;
+                    }
+                    if (typeof data.portalActive === 'boolean') {
+                        if (data.portalActive && !portal.active) {
+                            showToast("10/10 Monster Kalah! Peti Hadiah Level Up terbuka!", "success");
                         }
-                    } catch (e) {}
-                }
-
-                if (typeof data.defeatedCount === 'number') {
-                    defeatedCount = data.defeatedCount;
-                }
-                if (typeof data.portalActive === 'boolean') {
-                    if (data.portalActive && !portal.active) {
-                        showToast("10/10 Monster Kalah! Peti Hadiah Level Up terbuka!", "success");
+                        portal.active = data.portalActive;
                     }
-                    portal.active = data.portalActive;
-                }
-                updateHud();
-            }, (err) => console.warn(err));
+                    updateHud();
+                }, (err) => console.warn(err));
 
-            // Dengarkan posisi & animasi pemain lain di dalam room
-            const playersColRef = collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_players`);
-            unsubPlayers = onSnapshot(playersColRef, (snapshot) => {
-                const now = Date.now();
-                const updatedRemote = {};
-                let activeCount = 1;
+                // Dengarkan posisi & animasi pemain lain di dalam room
+                const playersColRef = collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_players`);
+                unsubPlayers = onSnapshot(playersColRef, (snapshot) => {
+                    const now = Date.now();
+                    const updatedRemote = {};
+                    let activeCount = 1;
 
-                snapshot.forEach((docSnap) => {
-                    const p = docSnap.data();
-                    if (p.uid !== currentUser.uid && (now - (p.lastSeen || 0)) < 25000) {
-                        updatedRemote[p.uid] = p;
-                        activeCount++;
-                    }
-                });
-                remotePlayers = updatedRemote;
-                document.getElementById('hud-online-count').textContent = activeCount;
-            }, (err) => console.warn(err));
+                    snapshot.forEach((docSnap) => {
+                        const p = docSnap.data();
+                        if (p.uid !== currentUser.uid && (now - (p.lastSeen || 0)) < 25000) {
+                            updatedRemote[p.uid] = p;
+                            activeCount++;
+                        }
+                    });
+                    remotePlayers = updatedRemote;
+                    document.getElementById('hud-online-count').textContent = activeCount;
+                }, (err) => console.warn(err));
 
-            await syncLocalPlayerState(true);
+                await syncLocalPlayerState(true);
+            } catch (err) {
+                console.warn("Fallback ke mode solo:", err);
+                isMultiplayer = false;
+                showToast("Berjalan dalam mode Solo!", "danger");
+            }
         }
 
         // =========================================================================
-        // 1. KONFIGURASI UTAMA & VARIABEL GLOBAL
+        // 1. INISIALISASI CANVAS, KONSTANTA DUNIA, & VARIABEL STATE GAME
         // =========================================================================
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
         const MAP_WIDTH = 2000;
         const MAP_HEIGHT = 2000;
-        const TILE_SIZE = 50;
-        const SAFE_ZONE_RADIUS = 250;
+        const TILE_SIZE = 48;
+        const SAFE_ZONE_RADIUS = 240;
         const TARGET_MONSTERS = 10;
 
         const OUTFIT_COLORS = [
-            '#3b82f6', // Biru Cerah
-            '#ef4444', // Merah Menyala
-            '#10b981', // Hijau Zamrud
-            '#f59e0b', // Kuning Emas
-            '#8b5cf6', // Ungu Violet
-            '#ec4899', // Merah Muda
-            '#06b6d4', // Biru Cyan
-            '#f97316'  // Oranye Jeruk
+            '#3b82f6', '#ef4444', '#10b981', '#8b5cf6',
+            '#f59e0b', '#ec4899', '#06b6d4', '#84cc16'
         ];
 
-        let gameRunning = false;
-        let soundEnabled = true;
         let currentMap = 1;
         let score = 0;
         let defeatedCount = 0;
-        let activeQuizIdx = -1;
+        let gameRunning = false;
         let animFrameId = null;
+        let activeQuizIdx = -1;
 
         const player = {
-            x: MAP_WIDTH / 2,
-            y: MAP_HEIGHT / 2,
+            name: 'Petualang',
+            x: MAP_WIDTH / 2 - 17,
+            y: MAP_HEIGHT / 2 - 17,
             width: 34,
             height: 34,
-            speed: 5.0,
+            speed: 4.5,
             color: '#3b82f6',
-            name: 'Petualang',
+            facing: 'down',
             jumpZ: 0,
             jumpVel: 0,
             isJumping: false,
-            invulnTimer: 0,
-            facing: 'down'
+            invulnTimer: 0
         };
 
+        let portal = { x: MAP_WIDTH / 2, y: MAP_HEIGHT / 2 - 175, radius: 44, active: false };
         let obstacles = [];
         let lakeAreas = [];
         let traps = [];
         let crocodiles = [];
         let tigers = [];
         let quizMonsters = [];
-        let mapQuestionUsage = new Map();
-        let portal = { x: MAP_WIDTH / 2, y: MAP_HEIGHT / 2 - 170, radius: 46, active: false };
+        const mapQuestionUsage = new Map();
 
         const keys = {
             ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
@@ -503,82 +506,61 @@
         };
 
         // =========================================================================
-        // 2. BANK SOAL KURIKULUM KELAS 2 SD (40 SOAL LENGKAP)
+        // 2. BANK SOAL KELAS 2 SD (MATEMATIKA, B. INDONESIA, PPKN, IPA/UMUM)
         // =========================================================================
         const QUESTION_BANK = [
-            // --- PENDIDIKAN PANCASILA ---
-            { subject: "Pendidikan Pancasila", q: "Mematuhi aturan di rumah adalah kewajiban dari...", options: ["Ayah saja", "Ibu saja", "Semua anggota keluarga", "Tamu yang datang"], ans: 2 },
-            { subject: "Pendidikan Pancasila", q: "Sebelum berangkat ke sekolah, sebaiknya kita berpamitan kepada...", options: ["Tetangga", "Orang tua", "Adik bayi", "Penjaga warung"], ans: 1 },
-            { subject: "Pendidikan Pancasila", q: "Mendapatkan kasih sayang dan bimbingan belajar dari orang tua adalah ... anak di rumah.", options: ["Kewajiban", "Hak", "Hukuman", "Larangan"], ans: 1 },
-            { subject: "Pendidikan Pancasila", q: "Contoh kewajiban siswa saat berada di kelas adalah...", options: ["Mendapat nilai bagus", "Menjaga kebersihan kelas dan piket", "Bermain saat guru menerangkan", "Meminjam buku perpustakaan"], ans: 1 },
-            { subject: "Pendidikan Pancasila", q: "Jika ada teman yang terjatuh saat bermain, sikap kita sesuai sila kedua Pancasila adalah...", options: ["Menertawakannya", "Membiarkannya", "Segera menolongnya", "Melaporkannya agar dimarahi"], ans: 2 },
-            { subject: "Pendidikan Pancasila", q: "Simbol sila keempat Pancasila yang berbunyi kerakyatan adalah...", options: ["Pohon beringin", "Rantai emas", "Kepala banteng", "Padi dan kapas"], ans: 2 },
-
-            // --- MATEMATIKA ---
-            { subject: "Matematika", q: "Hasil penjumlahan dari 46 + 28 adalah...", options: ["64", "74", "76", "84"], ans: 1 },
-            { subject: "Matematika", q: "Budi memiliki 53 kelereng, lalu diberikan kepada adiknya 19 kelereng. Sisa kelereng Budi adalah...", options: ["34", "36", "44", "72"], ans: 0 },
-            { subject: "Matematika", q: "Pada bilangan 385, angka 3 menempati nilai tempat...", options: ["Satuan", "Puluhan", "Ratusan", "Ribuan"], ans: 2 },
-            { subject: "Matematika", q: "Bentuk perkalian dari penjumlahan berulang 6 + 6 + 6 + 6 adalah...", options: ["6 x 6", "4 x 6", "4 x 4", "6 + 4"], ans: 1 },
-            { subject: "Matematika", q: "Hasil dari 3 x 7 adalah...", options: ["10", "18", "21", "24"], ans: 2 },
-            { subject: "Matematika", q: "Lanjutkan pola bilangan loncat 5 berikut: 15, 20, 25, ..., 35", options: ["28", "30", "32", "40"], ans: 1 },
-
-            // --- BAHASA INDONESIA ---
-            { subject: "Bahasa Indonesia", q: "Penulisan huruf kapital yang tepat terdapat pada kalimat...", options: ["siti dan rani bermain di taman.", "Hari Minggu kami pergi ke Surabaya.", "ayah membaca koran di teras.", "kucingku bernama manis."], ans: 1 },
-            { subject: "Bahasa Indonesia", q: "Tanda baca yang tepat untuk mengakhiri kalimat tanya 'Di mana rumahmu' adalah...", options: ["Tanda titik (.)", "Tanda koma (,)", "Tanda seru (!)", "Tanda tanya (?)"], ans: 3 },
-            { subject: "Bahasa Indonesia", q: "Kalimat perintah biasanya diakhiri dengan tanda baca...", options: ["Tanda seru (!)", "Tanda tanya (?)", "Tanda koma (,)", "Tanda hubung (-)"], ans: 0 },
-            { subject: "Bahasa Indonesia", q: "Ketika tidak sengaja menginjak kaki teman, kita harus segera mengucapkan...", options: ["Terima kasih", "Tolong", "Maaf", "Permisi"], ans: 2 },
-            { subject: "Bahasa Indonesia", q: "Kata sapaan yang sopan untuk menyapa ibu guru di pagi hari adalah...", options: ["Hai, kamu!", "Selamat pagi, Bu Guru.", "Mau ke mana?", "Halo teman!"], ans: 1 },
-            { subject: "Bahasa Indonesia", q: "Saat meminta tolong kepada kakak untuk mengambilkan buku, kalimat yang santun adalah...", options: ["Ambilkan bukuku sekarang!", "Kak, tolong ambilkan buku di meja itu.", "Cepat ambil buku itu!", "Buku itu punyaku!"], ans: 1 },
-
-            // --- SENI RUPA ---
-            { subject: "Seni Rupa", q: "Tiga warna pokok (warna primer) adalah...", options: ["Merah, Kuning, Biru", "Hijau, Ungu, Oranye", "Hitam, Putih, Cokelat", "Merah, Hijau, Kuning"], ans: 0 },
-            { subject: "Seni Rupa", q: "Campuran antara warna merah dan kuning akan menghasilkan warna sekunder yaitu...", options: ["Hijau", "Ungu", "Oranye (Jingga)", "Biru tua"], ans: 2 },
-            { subject: "Seni Rupa", q: "Campuran antara warna biru dan merah akan menghasilkan warna...", options: ["Hijau", "Ungu", "Kuning", "Abu-abu"], ans: 1 },
-            { subject: "Seni Rupa", q: "Garis yang berbentuk naik turun secara tajam seperti gigi gergaji disebut garis...", options: ["Lurus", "Lengkung", "Zig-zag", "Spiral"], ans: 2 },
-            { subject: "Seni Rupa", q: "Karya seni rupa yang dibuat dengan menempelkan biji-bijian atau potongan kertas pada gambar disebut...", options: ["Kolase", "Patung", "Lukisan", "Ukiran"], ans: 0 },
-
-            // --- BAHASA JAWA ---
-            { subject: "Bahasa Jawa", q: "Basa kramane tembung 'mangan' yaiku...", options: ["Sare", "Dhahar", "Siram", "Tindak"], ans: 1 },
-            { subject: "Bahasa Jawa", q: "Ibu lagi 'adus' ing kamar mandi. Basa kramane tembung 'adus' yaiku...", options: ["Siram", "Dhahar", "Wangsul", "Mriksani"], ans: 0 },
-            { subject: "Bahasa Jawa", q: "Yen diparingi hadiah dening simbah, kita ngaturake...", options: ["Nyuwun sewu", "Matur nuwun", "Ndherek langkung", "Sugeng enjang"], ans: 1 },
-            { subject: "Bahasa Jawa", q: "Pandhawa Lima iku cacahe ana lima. Sing nomer siji (pambarep) yaiku...", options: ["Werkudara", "Arjuna", "Puntadewa (Yudhistira)", "Sadewa"], ans: 2 },
-            { subject: "Bahasa Jawa", q: "Satriya Pandhawa sing duwe panah sakti lan wajah bagus yaiku...", options: ["Arjuna", "Bima", "Nakula", "Bagong"], ans: 0 },
-            { subject: "Bahasa Jawa", q: "Punakawan papat serangkai yaiku Semar, Gareng, Petruk, lan...", options: ["Gatutkaca", "Bagong", "Antasena", "Sengkuni"], ans: 1 },
-            { subject: "Bahasa Jawa", q: "Punakawan sing irunge dawa lan awake dhuwur yaiku...", options: ["Semar", "Gareng", "Petruk", "Bagong"], ans: 2 },
-
-            // --- PJOK ---
-            { subject: "PJOK", q: "Gerak berpindah tempat seperti berjalan, berlari, dan melompat disebut gerak...", options: ["Non-lokomotor", "Lokomotor", "Manipulatif", "Keseimbangan"], ans: 1 },
-            { subject: "PJOK", q: "Gerakan menekuk lutut, memutar kepala, dan mengayun lengan di tempat disebut gerak...", options: ["Lokomotor", "Manipulatif", "Non-lokomotor", "Berlari cepat"], ans: 2 },
-            { subject: "PJOK", q: "Gerak dasar menggunakan alat seperti melempar, menangkap, dan menendang bola disebut gerak...", options: ["Manipulatif", "Lokomotor", "Non-lokomotor", "Peregangan"], ans: 0 },
-            { subject: "PJOK", q: "Sebelum berolahraga kita melakukan pemanasan dengan tujuan agar...", options: ["Cepat lelah", "Otot tidak kram atau cedera", "Segera pulang", "Baju tetap bersih"], ans: 1 },
-
-            // --- PENDIDIKAN AGAMA ISLAM (PAI) ---
-            { subject: "Pendidikan Agama Islam", q: "Rukun Islam berjumlah...", options: ["4 perkara", "5 perkara", "6 perkara", "7 perkara"], ans: 1 },
-            { subject: "Pendidikan Agama Islam", q: "Rukun Iman yang pertama adalah iman kepada...", options: ["Malaikat Allah", "Kitab-kitab Allah", "Allah SWT", "Hari Kiamat"], ans: 2 },
-            { subject: "Pendidikan Agama Islam", q: "Jumlah rakaat sholat Subuh adalah...", options: ["2 rakaat", "3 rakaat", "4 rakaat", "5 rakaat"], ans: 0 },
-            { subject: "Pendidikan Agama Islam", q: "Anggota tubuh yang pertama kali dibasuh setelah niat saat berwudhu adalah...", options: ["Kedua kaki", "Kedua telapak tangan", "Telinga", "Rambut kepala"], ans: 1 },
-            { subject: "Pendidikan Agama Islam", q: "Kalimat thayyibah 'Subhanallah' artinya...", options: ["Segala puji bagi Allah", "Maha Suci Allah", "Allah Maha Besar", "Dengan nama Allah"], ans: 1 },
-            { subject: "Pendidikan Agama Islam", q: "Nabi Muhammad SAW memiliki sifat terpuji yang artinya dapat dipercaya, yaitu...", options: ["Siddiq", "Amanah", "Tabligh", "Fathonah"], ans: 1 }
+            { subject: "Matematika", q: "Hasil dari 24 + 15 adalah ...", options: ["38", "39", "40", "41"], ans: 1 },
+            { subject: "Matematika", q: "Hasil dari 50 - 18 adalah ...", options: ["32", "34", "42", "28"], ans: 0 },
+            { subject: "Matematika", q: "Bilangan 345 dibaca ...", options: ["Tiga empat lima", "Tiga ratus empat puluh lima", "Tiga ratus lima puluh empat", "Empat ratus tiga puluh lima"], ans: 1 },
+            { subject: "Matematika", q: "Angka 7 pada bilangan 278 menempati nilai tempat ...", options: ["Satuan", "Puluhan", "Ratusan", "Ribuan"], ans: 1 },
+            { subject: "Matematika", q: "Hasil dari 4 x 5 adalah ...", options: ["15", "20", "25", "9"], ans: 1 },
+            { subject: "Matematika", q: "Hasil dari 3 x 6 adalah ...", options: ["12", "15", "18", "21"], ans: 2 },
+            { subject: "Matematika", q: "18 permen dibagikan kepada 3 anak sama banyak. Setiap anak mendapat ... permen.", options: ["5", "6", "7", "8"], ans: 1 },
+            { subject: "Matematika", q: "Bangun datar yang memiliki 3 sisi dan 3 sudut adalah ...", options: ["Persegi", "Lingkaran", "Segitiga", "Persegi panjang"], ans: 2 },
+            { subject: "Matematika", q: "2 jam sama dengan ... menit.", options: ["60", "90", "100", "120"], ans: 3 },
+            { subject: "Matematika", q: "Uang logam Rp500,00 sebanyak 4 keping nilainya sama dengan ...", options: ["Rp1.000,00", "Rp1.500,00", "Rp2.000,00", "Rp2.500,00"], ans: 2 },
+            { subject: "Matematika", q: "Urutan bilangan dari yang terkecil: 142, 124, 150, 119 adalah ...", options: ["119, 124, 142, 150", "150, 142, 124, 119", "124, 119, 142, 150", "119, 142, 124, 150"], ans: 0 },
+            { subject: "Matematika", q: "Hasil dari 65 + 27 adalah ...", options: ["82", "91", "92", "93"], ans: 2 },
+            { subject: "Matematika", q: "Bentuk perkalian dari 4 + 4 + 4 + 4 + 4 adalah ...", options: ["4 x 4", "5 x 4", "4 x 6", "5 x 5"], ans: 1 },
+            { subject: "Matematika", q: "Panjang pensil 15 cm dan penghapus 5 cm. Jumlah panjang keduanya adalah ...", options: ["10 cm", "15 cm", "20 cm", "25 cm"], ans: 2 },
+            { subject: "Matematika", q: "Jarum pendek di angka 4 dan jarum panjang di angka 12 menunjukkan pukul ...", options: ["04.00", "12.04", "04.12", "02.00"], ans: 0 },
+            { subject: "B. Indonesia", q: "Lawan kata (antonim) dari kata 'rajin' adalah ...", options: ["Pintar", "Malas", "Cepat", "Berani"], ans: 1 },
+            { subject: "B. Indonesia", q: "Persamaan kata (sinonim) dari 'senang' adalah ...", options: ["Sedih", "Gembira", "Marah", "Takut"], ans: 1 },
+            { subject: "B. Indonesia", q: "Tanda baca yang digunakan di akhir kalimat tanya adalah ...", options: ["Titik (.)", "Koma (,)", "Tanda tanya (?)", "Tanda seru (!)"], ans: 2 },
+            { subject: "B. Indonesia", q: "Penulisan huruf kapital yang benar pada nama orang adalah ...", options: ["siti aminah", "Siti aminah", "Siti Aminah", "siti Aminah"], ans: 2 },
+            { subject: "B. Indonesia", q: "Tempat untuk membaca dan meminjam banyak buku di sekolah adalah ...", options: ["Kantin", "Perpustakaan", "UKS", "Lapangan"], ans: 1 },
+            { subject: "B. Indonesia", q: "Jika kita tidak sengaja menjatuhkan buku teman, sebaiknya kita mengucapkan ...", options: ["Terima kasih", "Tolong", "Maaf", "Permisi"], ans: 2 },
+            { subject: "B. Indonesia", q: "Kata tanya untuk menanyakan tempat adalah ...", options: ["Siapa", "Kapan", "Di mana", "Berapa"], ans: 2 },
+            { subject: "B. Indonesia", q: "Kalimat perintah diakhiri dengan tanda baca ...", options: ["Tanda seru (!)", "Tanda tanya (?)", "Tanda koma (,)", "Tanda titik dua (:)"], ans: 0 },
+            { subject: "PPKn", q: "Lambang sila pertama Pancasila adalah ...", options: ["Rantai", "Bintang", "Pohon Beringin", "Kepala Banteng"], ans: 1 },
+            { subject: "PPKn", q: "Bunyi sila ketiga Pancasila adalah ...", options: ["Ketuhanan Yang Maha Esa", "Persatuan Indonesia", "Kemanusiaan yang adil dan beradab", "Keadilan sosial bagi seluruh rakyat Indonesia"], ans: 1 },
+            { subject: "PPKn", q: "Membersihkan kelas bersama-sama disebut kegiatan ...", options: ["Lomba", "Piket kelas", "Upacara", "Istirahat"], ans: 1 },
+            { subject: "PPKn", q: "Contoh sikap rukun di rumah adalah ...", options: ["Berebut mainan dengan adik", "Membantu ibu menyapu lantai", "Membantah nasihat ayah", "Berteriak saat adik tidur"], ans: 1 },
+            { subject: "PPKn", q: "Semboyan negara Indonesia adalah ...", options: ["Tut Wuri Handayani", "Bhinneka Tunggal Ika", "Indonesia Raya", "Merdeka atau Mati"], ans: 1 },
+            { subject: "IPA & Umum", q: "Hewan yang berkembang biak dengan cara bertelur adalah ...", options: ["Kucing", "Sapi", "Ayam", "Kambing"], ans: 2 },
+            { subject: "IPA & Umum", q: "Bagian tumbuhan yang berfungsi menyerap air dari dalam tanah adalah ...", options: ["Daun", "Bunga", "Akar", "Buah"], ans: 2 },
+            { subject: "IPA & Umum", q: "Matahari terbit di sebelah ...", options: ["Barat", "Timur", "Utara", "Selatan"], ans: 1 },
+            { subject: "IPA & Umum", q: "Hewan pemakan tumbuhan disebut ...", options: ["Karnivora", "Herbivora", "Omnivora", "Insektivora"], ans: 1 },
+            { subject: "IPA & Umum", q: "Benda berikut yang bentuknya dapat berubah mengikuti wadahnya adalah ...", options: ["Batu", "Pensil", "Air minum", "Buku"], ans: 2 },
+            { subject: "IPA & Umum", q: "Menjaga kebersihan lingkungan mencegah datangnya penyakit ...", options: ["Demam berdarah", "Sakit gigi", "Rabun jauh", "Keseleo"], ans: 0 },
+            { subject: "IPA & Umum", q: "Alat indra yang digunakan untuk mendengar suara adalah ...", options: ["Mata", "Hidung", "Telinga", "Kulit"], ans: 2 }
         ];
 
         // =========================================================================
-        // 3. SINTESIS EFEK SUARA (WEB AUDIO API AMAN DENGAN TRY/CATCH)
+        // 3. SISTEM AUDIO WEB AUDIO API (TANPA FILE EKSTERNAL)
         // =========================================================================
         let audioCtx = null;
+        let soundEnabled = true;
 
         function initAudio() {
-            try {
-                if (!audioCtx) {
-                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                    if (AudioContextClass) {
-                        audioCtx = new AudioContextClass();
-                    }
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
                 }
-                if (audioCtx && audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-            } catch (err) {
-                // Tetap lanjutkan game meskipun audio diblokir browser
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
             }
         }
 
@@ -2056,12 +2038,14 @@
             document.getElementById('quiz-modal').classList.add('hidden');
 
             resizeCanvas();
-
-            await setupMultiplayerRoom(targetRoom);
+            buildMap(1);
 
             gameRunning = true;
             cancelAnimationFrame(animFrameId);
             gameLoop();
+
+            // Hubungkan multiplayer di latar belakang tanpa menahan layar hitam
+            setupMultiplayerRoom(targetRoom);
         }
 
         document.getElementById('btn-gen-room').addEventListener('click', () => {
