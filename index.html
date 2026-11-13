@@ -1020,6 +1020,86 @@
             if (hitsObstacle(e.x, ny, e.width, e.height)) e.vy = -e.vy; else e.y = ny;
         }
 
+        // Pantulkan di tepi peta (bukan hanya menahan posisi) agar tidak menumpuk di dinding/pojok
+        function bounceBounds(e, x1, y1, x2, y2) {
+            if (e.x < x1) { e.x = x1; e.vx = Math.abs(e.vx); }
+            else if (e.x > x2) { e.x = x2; e.vx = -Math.abs(e.vx); }
+            if (e.y < y1) { e.y = y1; e.vy = Math.abs(e.vy); }
+            else if (e.y > y2) { e.y = y2; e.vy = -Math.abs(e.vy); }
+        }
+
+        // Sesekali ubah arah secara acak (kecepatan tetap) supaya gerak terasa hidup dan menyebar
+        function wander(e, dt, chance = 0.006) {
+            if (Math.random() < chance * dt) {
+                const speed = Math.hypot(e.vx, e.vy) || 1;
+                const a = Math.random() * Math.PI * 2;
+                e.vx = Math.cos(a) * speed;
+                e.vy = Math.sin(a) * speed;
+            }
+        }
+
+        // Gerak monster: menyebar, tidak menumpuk di pojok/saling menempel, tidak macet
+        function updateMonster(m, dt) {
+            const mazeMap = currentMapIndex === 4;
+            const b = mazeMap
+                ? { x1: spawnBounds.x1, y1: spawnBounds.y1, x2: spawnBounds.x2 - m.width, y2: spawnBounds.y2 - m.height }
+                : { x1: 70, y1: 180, x2: MAP_WIDTH - 110, y2: MAP_HEIGHT - 120 };
+            if (!m.speed) m.speed = Math.hypot(m.vx, m.vy) || 1;
+
+            // Jika terjebak di dalam rintangan (tidak bisa gerak ke arah mana pun), pindahkan ke tempat bebas
+            if (hitsObstacle(m.x, m.y, m.width, m.height)) {
+                const p = findFreeSpot(m.width, m.height, 0);
+                m.x = p.x; m.y = p.y;
+            }
+
+            wander(m, dt);
+
+            // Dorongan halus: menjauh dari monster lain & dari pojok/tepi
+            let sx = 0, sy = 0;
+            for (const o of monsters) {
+                if (o === m || o.defeated) continue;
+                const ddx = (m.x - o.x), ddy = (m.y - o.y);
+                const d = Math.hypot(ddx, ddy);
+                if (d < 110) {
+                    const f = (110 - d) / 110;
+                    if (d < 0.001) { sx += Math.random() - 0.5; sy += Math.random() - 0.5; }
+                    else { sx += (ddx / d) * f; sy += (ddy / d) * f; }
+                }
+            }
+            const edge = 130;
+            const dl = m.x - b.x1, dr = b.x2 - m.x, dtp = m.y - b.y1, db = b.y2 - m.y;
+            if (dl < edge) sx += (edge - dl) / edge * 0.6;
+            if (dr < edge) sx -= (edge - dr) / edge * 0.6;
+            if (dtp < edge) sy += (edge - dtp) / edge * 0.6;
+            if (db < edge) sy -= (edge - db) / edge * 0.6;
+            if (sx !== 0 || sy !== 0) {
+                const turn = 0.06 * dt;
+                let nvx = m.vx / m.speed + sx * turn;
+                let nvy = m.vy / m.speed + sy * turn;
+                const l = Math.hypot(nvx, nvy) || 1;
+                m.vx = nvx / l * m.speed;
+                m.vy = nvy / l * m.speed;
+            }
+
+            const px = m.x, py = m.y;
+            moveBouncing(m, dt);
+            bounceBounds(m, b.x1, b.y1, b.x2, b.y2);
+
+            // Pengawas macet: kalau hampir tidak bergerak ~0,5 detik, ganti arah / pindah
+            if (Math.hypot(m.x - px, m.y - py) < m.speed * dt * 0.3) m.stuckT = (m.stuckT || 0) + dt;
+            else m.stuckT = 0;
+            if (m.stuckT > 30) {
+                m.stuckT = 0;
+                const a = Math.random() * Math.PI * 2;
+                m.vx = Math.cos(a) * m.speed;
+                m.vy = Math.sin(a) * m.speed;
+                if (Math.random() < 0.5) {
+                    const p = findFreeSpot(m.width, m.height, 200);
+                    m.x = p.x; m.y = p.y;
+                }
+            }
+        }
+
         // return true jika peta dibangun ulang (nyawa habis)
         function updateHazards(dt) {
             for (const h of hazards) {
@@ -1035,11 +1115,11 @@
                     if (!hitsObstacle(h.x, h.y + sy, h.width, h.height)) h.y += sy;
                     if (Math.abs(sx) > 0.05) h.facing = sx >= 0 ? 1 : -1;
                 } else {
+                    wander(h, dt, 0.004);
                     moveBouncing(h, dt);
                     h.facing = h.vx >= 0 ? 1 : -1;
                 }
-                h.x = clamp(h.x, 80, MAP_WIDTH - 130);
-                h.y = clamp(h.y, 200, MAP_HEIGHT - 140);
+                bounceBounds(h, 80, 200, MAP_WIDTH - 130, MAP_HEIGHT - 140);
 
                 if (player.invulnTimer === 0 && player.jumpZ < 18 && rectOverlap(player, h)) {
                     sfx.hurt();
@@ -1134,9 +1214,7 @@
                 for (let idx = 0; idx < monsters.length; idx++) {
                     const m = monsters[idx];
                     if (m.defeated) continue;
-                    moveBouncing(m, dt);
-                    m.x = clamp(m.x, 70, MAP_WIDTH - 110);
-                    m.y = clamp(m.y, 180, MAP_HEIGHT - 120);
+                    updateMonster(m, dt);
                     if (player.jumpZ < 16 && rectOverlap(player, m)) {
                         openQuizModal(m, idx);
                         break;
