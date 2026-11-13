@@ -19,6 +19,7 @@
             min-height: 100svh;
             overflow-y: auto;
         }
+        input { user-select: text; -webkit-user-select: text; }
         .font-pixel {
             font-family: 'Press Start 2P', cursive;
         }
@@ -78,7 +79,10 @@
                     <i class="fa-solid fa-ghost text-emerald-400"></i>
                     <span><span class="hidden sm:inline">MONSTER: </span><span id="hud-monsters" class="text-emerald-400 font-bold font-pixel text-[10px] sm:text-[11px]">0/10</span></span>
                 </div>
-                <div id="hud-room-badge" class="hidden flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-cyan-500/40">
+                <div class="flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-rose-500/30" title="Nyawa">
+                    <span id="hud-lives" class="text-xs sm:text-sm tracking-tight">❤️❤️❤️</span>
+                </div>
+                <div id="hud-room-badge" role="button" tabindex="0" title="Klik untuk menyalin kode room" class="hidden flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-cyan-500/40 cursor-pointer">
                     <span id="hud-mp-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                     <i class="fa-solid fa-users text-cyan-400"></i>
                     <span><span id="hud-room-code" class="text-cyan-300 font-bold font-pixel text-[10px] sm:text-[11px]">PUBLIK</span> (<span id="hud-online-count" class="text-emerald-400">1</span>)</span>
@@ -86,7 +90,7 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <button id="btn-sound" type="button" title="Suara" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-3 py-1.5 rounded-xl border border-slate-600 transition-all active:scale-95 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+                <button id="btn-sound" type="button" title="Suara" aria-label="Suara" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-3 py-1.5 rounded-xl border border-slate-600 transition-all active:scale-95 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
                     <i id="icon-sound" class="fa-solid fa-volume-high"></i>
                     <span class="hidden sm:inline" id="label-sound">Suara ON</span>
                 </button>
@@ -124,8 +128,8 @@
             </div>
 
             <!-- Start Screen Overlay -->
-            <div id="overlay-start" class="absolute inset-0 glass-panel flex flex-col items-center justify-center p-5 sm:p-8 text-center z-30 overflow-y-auto">
-                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-amber-500/25 rounded-3xl flex items-center justify-center mb-3 border-2 border-amber-400/60 pulse-glow">
+            <div id="overlay-start" class="absolute inset-0 glass-panel flex flex-col items-center justify-start sm:justify-center p-5 sm:p-8 text-center z-30 overflow-y-auto">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-amber-500/25 rounded-3xl flex items-center justify-center mb-3 border-2 border-amber-400/60 pulse-glow shrink-0">
                     <i class="fa-solid fa-dragon text-amber-400 text-3xl sm:text-4xl"></i>
                 </div>
                 <h1 class="text-lg sm:text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-yellow-300 mb-2 font-pixel leading-relaxed">
@@ -138,23 +142,33 @@
                     <span class="text-slate-300 font-bold">3. Pemakaman Angker</span>,
                     <span class="text-orange-400 font-bold">4. Hutan Lebat</span>, dan
                     <span class="text-cyan-400 font-bold">5. Labirin Gelap</span>!
-                    Kalahkan <strong>10 Monster Kuis</strong> di setiap peta untuk membuka Portal menuju dunia berikutnya!
+                    Kalahkan <strong>10 Monster Kuis</strong> di setiap peta untuk membuka Peti Harta menuju dunia berikutnya! Kamu punya <strong>3 nyawa</strong> di setiap peta.
                 </p>
 
                 <div class="w-full max-w-xs space-y-3">
+                    <button id="btn-continue" type="button" class="hidden w-full py-3 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-sm rounded-xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-play"></i>
+                        <span id="label-continue">LANJUTKAN</span>
+                    </button>
                     <div class="text-left">
-                        <label for="player-name-input" class="block text-xs font-bold text-slate-300 mb-1">Nama Petualang:</label>
-                        <input type="text" id="player-name-input" maxlength="14" placeholder="Masukkan namamu (contoh: Budi)..." class="w-full px-4 py-2.5 bg-slate-900 border-2 border-slate-700 rounded-xl text-center text-white focus:outline-none focus:border-amber-400 font-bold text-sm placeholder:text-slate-500">
+                        <label for="player-name-input" class="block text-xs font-bold text-slate-300 mb-1">Nama Petualang (cukup nama panggilan):</label>
+                        <input type="text" id="player-name-input" maxlength="14" autocomplete="off" placeholder="Contoh: Budi" class="w-full px-4 py-2.5 bg-slate-900 border-2 border-slate-700 rounded-xl text-center text-white focus:outline-none focus:border-amber-400 font-bold text-sm placeholder:text-slate-500">
                     </div>
                     <div class="text-left">
-                        <label for="room-code-input" class="block text-xs font-bold text-cyan-300 mb-1">Mode Server Multiplayer:</label>
-                        <div class="flex gap-1.5">
-                            <input type="text" id="room-code-input" maxlength="10" placeholder="Otomatis Lobi Publik (atau isi Kode Privat)" class="w-full px-3 py-2 bg-slate-900 border-2 border-slate-700 rounded-xl text-center text-cyan-300 uppercase focus:outline-none focus:border-cyan-400 font-bold text-xs placeholder:text-slate-400">
-                            <button id="btn-gen-room" type="button" title="Buat Kode Room Privat" class="px-3 py-2 bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-500/50 rounded-xl text-cyan-300 text-xs font-bold cursor-pointer whitespace-nowrap">
-                                <i class="fa-solid fa-lock"></i> Privat
+                        <label for="room-code-input" class="block text-xs font-bold text-cyan-300 mb-1">Kode Room Kelas (multiplayer):</label>
+                        <input type="text" id="room-code-input" maxlength="10" autocomplete="off" placeholder="Isi kode dari guru / teman" class="w-full px-3 py-2 bg-slate-900 border-2 border-slate-700 rounded-xl text-center text-cyan-300 uppercase focus:outline-none focus:border-cyan-400 font-bold text-xs placeholder:text-slate-400">
+                        <div class="flex gap-1.5 mt-1.5">
+                            <button id="btn-gen-room" type="button" class="flex-1 px-2 py-1.5 bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-500/50 rounded-lg text-cyan-300 text-[11px] font-bold cursor-pointer">
+                                <i class="fa-solid fa-lock"></i> Buat Kode
+                            </button>
+                            <button id="btn-solo-room" type="button" class="flex-1 px-2 py-1.5 bg-slate-700/40 hover:bg-slate-600/50 border border-slate-500/50 rounded-lg text-slate-200 text-[11px] font-bold cursor-pointer">
+                                <i class="fa-solid fa-user"></i> Main Sendiri
+                            </button>
+                            <button id="btn-public-room" type="button" class="flex-1 px-2 py-1.5 bg-amber-600/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-lg text-amber-300 text-[11px] font-bold cursor-pointer">
+                                <i class="fa-solid fa-globe"></i> Publik
                             </button>
                         </div>
-                        <p class="text-[10px] text-emerald-300 mt-1"><i class="fa-solid fa-globe mr-1"></i>Biarkan kosong untuk otomatis mabar bersama pemain lain yang sedang online!</p>
+                        <p id="room-hint" class="text-[10px] text-emerald-300 mt-1">Kosongkan untuk dibuatkan kode room privat otomatis. Bagikan kodenya ke teman sekelas agar bisa mabar.</p>
                     </div>
                     <p class="text-[11px] text-slate-400 italic">
                         <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1"></i>Warna kostum karakter dipilih otomatis secara acak!
@@ -192,7 +206,7 @@
             </div>
 
             <!-- Quiz Modal Overlay -->
-            <div id="quiz-modal" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 z-40">
+            <div id="quiz-modal" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 z-40 overflow-y-auto">
                 <div class="glass-panel border-2 border-amber-400/70 rounded-2xl w-full max-w-lg p-5 sm:p-6 text-left shadow-2xl">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-3 border-b border-slate-700 pb-3">
                         <span id="quiz-badge" class="text-xs font-extrabold px-3 py-1 bg-amber-500/30 text-amber-300 rounded-lg border border-amber-400/40">
@@ -207,6 +221,10 @@
                     </h3>
                     <div id="quiz-options" class="space-y-2.5 mb-3"></div>
                     <div id="quiz-feedback" class="hidden p-3 rounded-xl text-center text-xs sm:text-sm font-bold"></div>
+                    <div id="quiz-explain" class="hidden mt-2 p-3 rounded-xl text-xs sm:text-sm text-sky-100 bg-sky-500/15 border border-sky-400/40 leading-relaxed"></div>
+                    <button id="btn-quiz-next" type="button" class="hidden w-full mt-3 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer">
+                        LANJUT <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -215,17 +233,17 @@
         <div class="w-full mt-2.5 flex items-center justify-between px-4 sm:hidden max-w-md">
             <div class="grid grid-cols-3 gap-1.5 w-36">
                 <div></div>
-                <button id="btn-up" type="button" class="touch-btn h-11 rounded-xl flex items-center justify-center text-lg text-amber-400">
+                <button id="btn-up" type="button" aria-label="Atas" class="touch-btn h-11 rounded-xl flex items-center justify-center text-lg text-amber-400">
                     <i class="fa-solid fa-arrow-up"></i>
                 </button>
                 <div></div>
-                <button id="btn-left" type="button" class="touch-btn h-11 rounded-xl flex items-center justify-center text-lg text-amber-400">
+                <button id="btn-left" type="button" aria-label="Kiri" class="touch-btn h-11 rounded-xl flex items-center justify-center text-lg text-amber-400">
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
-                <button id="btn-down" type="button" class="touch-btn h-11 rounded-xl flex items-center justify-center text-lg text-amber-400">
+                <button id="btn-down" type="button" aria-label="Bawah" class="touch-btn h-11 rounded-xl flex items-center justify-center text-lg text-amber-400">
                     <i class="fa-solid fa-arrow-down"></i>
                 </button>
-                <button id="btn-right" type="button" class="touch-btn h-11 rounded-xl flex items-center justify-center text-lg text-amber-400">
+                <button id="btn-right" type="button" aria-label="Kanan" class="touch-btn h-11 rounded-xl flex items-center justify-center text-lg text-amber-400">
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </div>
@@ -249,7 +267,9 @@
     </div>
 
     <script type="module">
-        // --- KONFIGURASI FIREBASE MULTIPLAYER ---
+        // =====================================================================
+        // KONFIGURASI FIREBASE (tidak diubah)
+        // =====================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyASKeS_grOu2dThrXEuEayOMAKF4kseySA",
             authDomain: "petualangan-ulangan.firebaseapp.com",
@@ -260,26 +280,44 @@
             measurementId: "G-MQ519LR0VM"
         };
 
-        let db = null;
-        let currentUserId = "hero_" + Math.random().toString(36).substring(2, 10) + "_" + Date.now().toString(36);
-        let mpActive = false;
-        let currentRoomCode = "PUBLIK";
-        let remotePlayers = {};
-        let unsubRoom = null;
-        let unsubPlayers = null;
-        let lastSyncTime = 0;
-
-        async function initFirebaseMP() {
-            // Menggunakan HTTPS REST API standar ke project Firebase kamu (bebas blokir WebChannel / unavailable)
-            db = true;
-            window._fs = true;
+        // =====================================================================
+        // UTILITAS
+        // =====================================================================
+        const $ = (id) => document.getElementById(id);
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+        function rnd(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+        function shuffleArray(arr) {
+            const b = arr.slice();
+            for (let i = b.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [b[i], b[j]] = [b[j], b[i]];
+            }
+            return b;
+        }
+        const NAME_MAX = 14;
+        function sanitizeName(s) {
+            return String(s || '').replace(/[^\p{L}\p{N} _-]/gu, '').trim().slice(0, NAME_MAX);
+        }
+        function sanitizeRoom(s) {
+            return String(s || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 10);
+        }
+        function genRoomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let c = 'KLS';
+            for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
+            return c;
         }
 
-        // --- INISIALISASI CANVAS & AUDIO ---
-        const canvas = document.getElementById('gameCanvas');
+        // =====================================================================
+        // CANVAS & AUDIO
+        // =====================================================================
+        const canvas = $('gameCanvas');
         const ctx = canvas.getContext('2d');
         const MAP_WIDTH = 2200;
         const MAP_HEIGHT = 1500;
+        const MAX_LIVES = 3;
+        const TARGET_DEFEATS = 10;
 
         let soundEnabled = true;
         let audioCtx = null;
@@ -320,105 +358,208 @@
             chest: () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'triangle', 0.22, 0.18), i * 90)); }
         };
 
-        // --- BANK SOAL KELAS 2 SD VARIATIF (MAX 2X PER MAP) ---
+        // =====================================================================
+        // BANK SOAL (lv 1 = mudah, 2 = sedang, 3 = sulit) + PEMBUAT SOAL HITUNGAN
+        // =====================================================================
         const QUESTION_BANK = [
-            { subject: "Matematika", q: "Hasil dari 35 + 27 adalah ...", options: ["52", "62", "63", "72"], ans: 1 },
-            { subject: "Matematika", q: "84 - 39 sama dengan ...", options: ["45", "55", "43", "35"], ans: 0 },
-            { subject: "Matematika", q: "4 x 6 artinya 6 + 6 + 6 + 6, hasilnya adalah ...", options: ["20", "24", "28", "18"], ans: 1 },
-            { subject: "Matematika", q: "27 dibagi 3 sama dengan ...", options: ["7", "8", "9", "6"], ans: 2 },
-            { subject: "Matematika", q: "Angka 7 pada bilangan 375 menempati nilai tempat ...", options: ["Ratusan", "Puluhan", "Satuan", "Ribuan"], ans: 1 },
-            { subject: "Matematika", q: "Bangun datar yang memiliki 3 sisi dan 3 sudut adalah ...", options: ["Persegi", "Lingkaran", "Segitiga", "Persegi Panjang"], ans: 2 },
-            { subject: "Matematika", q: "2 meter sama dengan ... sentimeter (cm).", options: ["20 cm", "200 cm", "2.000 cm", "100 cm"], ans: 1 },
-            { subject: "Matematika", q: "Jarum pendek di angka 4 dan jarum panjang di angka 12 menunjukkan pukul ...", options: ["04.00", "12.04", "04.30", "05.00"], ans: 0 },
-            { subject: "Matematika", q: "1 kilogram sama dengan ... ons.", options: ["5 ons", "10 ons", "100 ons", "1.000 ons"], ans: 1 },
-            { subject: "Matematika", q: "Urutan bilangan dari yang terkecil: 215, 198, 240, 189 adalah ...", options: ["189, 198, 215, 240", "198, 189, 215, 240", "240, 215, 198, 189", "189, 215, 198, 240"], ans: 0 },
-            { subject: "Bahasa Indonesia", q: "Kata tanya untuk menanyakan tempat adalah ...", options: ["Siapa", "Kapan", "Di mana", "Berapa"], ans: 2 },
-            { subject: "Bahasa Indonesia", q: "Huruf kapital digunakan pada awal kalimat dan nama ...", options: ["Buah", "Orang", "Mainan", "Warna"], ans: 1 },
-            { subject: "Bahasa Indonesia", q: "Antonim (lawan kata) dari 'rajin' adalah ...", options: ["Pintar", "Malas", "Cepat", "Bersih"], ans: 1 },
-            { subject: "Bahasa Indonesia", q: "Tanda baca yang digunakan di akhir kalimat tanya adalah ...", options: ["Titik (.)", "Koma (,)", "Tanda tanya (?)", "Tanda seru (!)"], ans: 2 },
-            { subject: "Bahasa Indonesia", q: "Jika tidak sengaja menginjak kaki teman, kita harus mengucapkan ...", options: ["Terima kasih", "Permisi", "Maaf", "Tolong"], ans: 2 },
-            { subject: "Bahasa Indonesia", q: "Sinonim (persamaan kata) dari 'gembira' adalah ...", options: ["Sedih", "Senang", "Marah", "Takut"], ans: 1 },
-            { subject: "Bahasa Indonesia", q: "Penulisan nama kota yang benar adalah ...", options: ["bandung", "BANDung", "Bandung", "bAndung"], ans: 2 },
-            { subject: "PPKn", q: "Bunyi sila pertama Pancasila adalah ...", options: ["Kemanusiaan yang adil dan beradab", "Ketuhanan Yang Maha Esa", "Persatuan Indonesia", "Keadilan sosial"], ans: 1 },
-            { subject: "PPKn", q: "Lambang sila ketiga Pancasila adalah ...", options: ["Bintang", "Rantai Emas", "Pohon Beringin", "Kepala Banteng"], ans: 2 },
-            { subject: "PPKn", q: "Membersihkan kelas bersama-sama mencerminkan sikap ...", options: ["Gotong royong", "Mandiri", "Sombong", "Acuh tak acuh"], ans: 0 },
-            { subject: "PPKn", q: "Aturan di sekolah harus dipatuhi oleh ...", options: ["Guru saja", "Siswa saja", "Semua warga sekolah", "Kepala sekolah saja"], ans: 2 },
-            { subject: "PPKn", q: "Jika ada teman yang berbeda agama sedang beribadah, sikap kita sebaiknya ...", options: ["Mengganggunya", "Menghormatinya", "Mengejeknya", "Memarahinya"], ans: 1 },
-            { subject: "IPAS / Umum", q: "Hewan yang berkembang biak dengan cara bertelur adalah ...", options: ["Kucing", "Sapi", "Ayam", "Kambing"], ans: 2 },
-            { subject: "IPAS / Umum", q: "Bagian tumbuhan yang berfungsi menyerap air dari dalam tanah adalah ...", options: ["Daun", "Bunga", "Akar", "Buah"], ans: 2 },
-            { subject: "IPAS / Umum", q: "Matahari terbit di sebelah ... dan terbenam di sebelah barat.", options: ["Utara", "Selatan", "Timur", "Tenggara"], ans: 2 },
-            { subject: "IPAS / Umum", q: "Benda cair yang sering kita minum setiap hari agar tubuh sehat adalah ...", options: ["Air putih", "Minyak tanah", "Bensin", "Tinta"], ans: 0 },
-            { subject: "Bahasa Inggris", q: "Bahasa Inggris dari 'Kucing' adalah ...", options: ["Dog", "Cat", "Bird", "Fish"], ans: 1 },
-            { subject: "Bahasa Inggris", q: "'Good Morning' artinya ...", options: ["Selamat Malam", "Selamat Siang", "Selamat Pagi", "Selamat Tidur"], ans: 2 },
-            { subject: "Bahasa Inggris", q: "Warna 'Merah' dalam Bahasa Inggris adalah ...", options: ["Blue", "Green", "Yellow", "Red"], ans: 3 },
-            { subject: "Bahasa Inggris", q: "Angka 'Ten' dalam Bahasa Indonesia adalah ...", options: ["Delapan", "Sembilan", "Sepuluh", "Tujuh"], ans: 2 }
+            // ---------- LEVEL 1 ----------
+            { lv: 1, subject: "Bahasa Inggris", q: "Bahasa Inggris dari 'Kucing' adalah ...", options: ["Dog", "Cat", "Bird", "Fish"], ans: 1, exp: "Cat artinya kucing. Dog artinya anjing." },
+            { lv: 1, subject: "Bahasa Inggris", q: "'Good Morning' artinya ...", options: ["Selamat Malam", "Selamat Siang", "Selamat Pagi", "Selamat Tidur"], ans: 2, exp: "Morning = pagi, jadi Good Morning = Selamat Pagi." },
+            { lv: 1, subject: "Bahasa Inggris", q: "Warna 'Merah' dalam Bahasa Inggris adalah ...", options: ["Blue", "Green", "Yellow", "Red"], ans: 3, exp: "Red = merah, Blue = biru, Green = hijau, Yellow = kuning." },
+            { lv: 1, subject: "Bahasa Inggris", q: "Angka 'Ten' dalam Bahasa Indonesia adalah ...", options: ["Delapan", "Sembilan", "Sepuluh", "Tujuh"], ans: 2, exp: "Ten = sepuluh." },
+            { lv: 1, subject: "Bahasa Inggris", q: "'Book' artinya ...", options: ["Pensil", "Buku", "Tas", "Meja"], ans: 1, exp: "Book = buku." },
+            { lv: 1, subject: "Bahasa Inggris", q: "Bahasa Inggris dari 'Biru' adalah ...", options: ["Red", "Blue", "Green", "Black"], ans: 1, exp: "Blue = biru." },
+            { lv: 1, subject: "Bahasa Indonesia", q: "Kata tanya untuk menanyakan tempat adalah ...", options: ["Siapa", "Kapan", "Di mana", "Berapa"], ans: 2, exp: "'Di mana' dipakai untuk menanyakan tempat." },
+            { lv: 1, subject: "Bahasa Indonesia", q: "Antonim (lawan kata) dari 'rajin' adalah ...", options: ["Pintar", "Malas", "Cepat", "Bersih"], ans: 1, exp: "Lawan kata rajin adalah malas." },
+            { lv: 1, subject: "Bahasa Indonesia", q: "Tanda baca yang digunakan di akhir kalimat tanya adalah ...", options: ["Titik (.)", "Koma (,)", "Tanda tanya (?)", "Tanda seru (!)"], ans: 2, exp: "Kalimat tanya diakhiri tanda tanya (?)." },
+            { lv: 1, subject: "Bahasa Indonesia", q: "Jika tidak sengaja menginjak kaki teman, kita harus mengucapkan ...", options: ["Terima kasih", "Permisi", "Maaf", "Tolong"], ans: 2, exp: "Kita meminta maaf saat melakukan kesalahan." },
+            { lv: 1, subject: "Bahasa Indonesia", q: "Sinonim (persamaan kata) dari 'gembira' adalah ...", options: ["Sedih", "Senang", "Marah", "Takut"], ans: 1, exp: "Gembira dan senang artinya sama." },
+            { lv: 1, subject: "Bahasa Indonesia", q: "Huruf kapital digunakan pada awal kalimat dan nama ...", options: ["Buah", "Orang", "Mainan", "Warna"], ans: 1, exp: "Nama orang diawali huruf kapital, contoh: Budi." },
+            { lv: 1, subject: "PPKn", q: "Bunyi sila pertama Pancasila adalah ...", options: ["Kemanusiaan yang adil dan beradab", "Ketuhanan Yang Maha Esa", "Persatuan Indonesia", "Keadilan sosial"], ans: 1, exp: "Sila pertama: Ketuhanan Yang Maha Esa." },
+            { lv: 1, subject: "PPKn", q: "Membersihkan kelas bersama-sama mencerminkan sikap ...", options: ["Gotong royong", "Mandiri", "Sombong", "Acuh tak acuh"], ans: 0, exp: "Bekerja bersama untuk kepentingan bersama disebut gotong royong." },
+            { lv: 1, subject: "PPKn", q: "Jika menemukan uang milik teman, sebaiknya kita ...", options: ["Mengambilnya", "Mengembalikannya", "Menyembunyikannya", "Membuangnya"], ans: 1, exp: "Jujur berarti mengembalikan barang milik orang lain." },
+            { lv: 1, subject: "PPKn", q: "Sebelum makan, sebaiknya kita ...", options: ["Berdoa dan mencuci tangan", "Berlari-lari", "Tidur", "Berteriak"], ans: 0, exp: "Berdoa dan mencuci tangan adalah kebiasaan baik sebelum makan." },
+            { lv: 1, subject: "IPAS / Umum", q: "Hewan yang berkembang biak dengan cara bertelur adalah ...", options: ["Kucing", "Sapi", "Ayam", "Kambing"], ans: 2, exp: "Ayam bertelur. Kucing, sapi, dan kambing melahirkan." },
+            { lv: 1, subject: "IPAS / Umum", q: "Bagian tumbuhan yang berfungsi menyerap air dari dalam tanah adalah ...", options: ["Daun", "Bunga", "Akar", "Buah"], ans: 2, exp: "Akar menyerap air dan menopang tumbuhan." },
+            { lv: 1, subject: "IPAS / Umum", q: "Matahari terbit di sebelah ... dan terbenam di sebelah barat.", options: ["Utara", "Selatan", "Timur", "Tenggara"], ans: 2, exp: "Matahari terbit di timur dan terbenam di barat." },
+            { lv: 1, subject: "IPAS / Umum", q: "Benda cair yang sering kita minum setiap hari agar tubuh sehat adalah ...", options: ["Air putih", "Minyak tanah", "Bensin", "Tinta"], ans: 0, exp: "Air putih menyehatkan tubuh. Benda lainnya berbahaya jika diminum." },
+            { lv: 1, subject: "IPAS / Umum", q: "Hewan yang dapat terbang adalah ...", options: ["Ikan", "Burung", "Kucing", "Sapi"], ans: 1, exp: "Burung memiliki sayap sehingga dapat terbang." },
+            { lv: 1, subject: "IPAS / Umum", q: "Alat indra untuk melihat adalah ...", options: ["Telinga", "Hidung", "Mata", "Lidah"], ans: 2, exp: "Mata adalah indra penglihatan." },
+            { lv: 1, subject: "Matematika", q: "Bangun datar yang memiliki 3 sisi dan 3 sudut adalah ...", options: ["Persegi", "Lingkaran", "Segitiga", "Persegi Panjang"], ans: 2, exp: "Segitiga memiliki 3 sisi dan 3 sudut." },
+            { lv: 1, subject: "Matematika", q: "Jarum pendek di angka 4 dan jarum panjang di angka 12 menunjukkan pukul ...", options: ["04.00", "12.04", "04.30", "05.00"], ans: 0, exp: "Jarum panjang di 12 berarti tepat jam bulat, jadi pukul 04.00." },
+
+            // ---------- LEVEL 2 ----------
+            { lv: 2, subject: "Bahasa Indonesia", q: "Penulisan nama kota yang benar adalah ...", options: ["bandung", "BANDung", "Bandung", "bAndung"], ans: 2, exp: "Nama kota diawali huruf kapital: Bandung." },
+            { lv: 2, subject: "Bahasa Indonesia", q: "Sinonim (persamaan kata) dari 'pandai' adalah ...", options: ["Bodoh", "Pintar", "Malas", "Lambat"], ans: 1, exp: "Pandai dan pintar artinya sama." },
+            { lv: 2, subject: "Bahasa Indonesia", q: "Tanda baca untuk kalimat seru adalah ...", options: ["Titik (.)", "Koma (,)", "Tanda tanya (?)", "Tanda seru (!)"], ans: 3, exp: "Kalimat seru diakhiri tanda seru (!)." },
+            { lv: 2, subject: "PPKn", q: "Lambang sila ketiga Pancasila adalah ...", options: ["Bintang", "Rantai Emas", "Pohon Beringin", "Kepala Banteng"], ans: 2, exp: "Sila ketiga (Persatuan Indonesia) berlambang pohon beringin." },
+            { lv: 2, subject: "PPKn", q: "Sila kedua Pancasila berlambang ...", options: ["Bintang", "Rantai Emas", "Pohon Beringin", "Padi dan Kapas"], ans: 1, exp: "Sila kedua (Kemanusiaan yang adil dan beradab) berlambang rantai emas." },
+            { lv: 2, subject: "PPKn", q: "Aturan di sekolah harus dipatuhi oleh ...", options: ["Guru saja", "Siswa saja", "Semua warga sekolah", "Kepala sekolah saja"], ans: 2, exp: "Aturan berlaku untuk semua warga sekolah." },
+            { lv: 2, subject: "PPKn", q: "Jika ada teman yang berbeda agama sedang beribadah, sikap kita sebaiknya ...", options: ["Mengganggunya", "Menghormatinya", "Mengejeknya", "Memarahinya"], ans: 1, exp: "Kita harus saling menghormati ibadah orang lain." },
+            { lv: 2, subject: "PPKn", q: "Salah satu hak anak agar menjadi pintar adalah mendapatkan ...", options: ["Pendidikan", "Mainan baru", "Uang jajan", "Hadiah"], ans: 0, exp: "Setiap anak berhak mendapatkan pendidikan." },
+            { lv: 2, subject: "IPAS / Umum", q: "Hewan pemakan daging disebut ...", options: ["Herbivora", "Karnivora", "Omnivora", "Insektivora"], ans: 1, exp: "Karnivora = pemakan daging, contoh: singa dan harimau." },
+            { lv: 2, subject: "IPAS / Umum", q: "Air yang membeku akan berubah wujud menjadi ...", options: ["Gas", "Es (padat)", "Uap", "Awan"], ans: 1, exp: "Air membeku menjadi es yang berwujud padat." },
+            { lv: 2, subject: "IPAS / Umum", q: "Hewan yang berkembang biak dengan cara melahirkan adalah ...", options: ["Bebek", "Kucing", "Ayam", "Burung"], ans: 1, exp: "Kucing melahirkan anak. Bebek, ayam, dan burung bertelur." },
+            { lv: 2, subject: "IPAS / Umum", q: "Tumbuhan membuat makanannya sendiri terutama di bagian ...", options: ["Akar", "Daun", "Batang", "Biji"], ans: 1, exp: "Daun membuat makanan melalui fotosintesis." },
+            { lv: 2, subject: "Bahasa Inggris", q: "'Monday' artinya hari ...", options: ["Senin", "Selasa", "Rabu", "Minggu"], ans: 0, exp: "Monday = Senin." },
+            { lv: 2, subject: "Bahasa Inggris", q: "'What is your name?' artinya ...", options: ["Siapa namamu?", "Berapa umurmu?", "Di mana rumahmu?", "Apa kabarmu?"], ans: 0, exp: "What is your name? = Siapa namamu?" },
+            { lv: 2, subject: "Matematika", q: "Angka 7 pada bilangan 375 menempati nilai tempat ...", options: ["Ratusan", "Puluhan", "Satuan", "Ribuan"], ans: 1, exp: "Di 375: 3 ratusan, 7 puluhan, 5 satuan." },
+            { lv: 2, subject: "Matematika", q: "2 meter sama dengan ... sentimeter (cm).", options: ["20 cm", "200 cm", "2.000 cm", "100 cm"], ans: 1, exp: "1 meter = 100 cm, jadi 2 meter = 200 cm." },
+            { lv: 2, subject: "Matematika", q: "1 kilogram sama dengan ... ons.", options: ["5 ons", "10 ons", "100 ons", "1.000 ons"], ans: 1, exp: "1 kg = 10 ons." },
+            { lv: 2, subject: "Matematika", q: "Urutan bilangan dari yang terkecil: 215, 198, 240, 189 adalah ...", options: ["189, 198, 215, 240", "198, 189, 215, 240", "240, 215, 198, 189", "189, 215, 198, 240"], ans: 0, exp: "Bandingkan dari ratusan, puluhan, lalu satuan: 189 < 198 < 215 < 240." },
+            { lv: 2, subject: "Matematika", q: "Bangun datar yang memiliki 4 sisi sama panjang adalah ...", options: ["Persegi", "Segitiga", "Lingkaran", "Persegi Panjang"], ans: 0, exp: "Persegi memiliki 4 sisi yang sama panjang." },
+            { lv: 2, subject: "Matematika", q: "1 jam sama dengan ... menit.", options: ["30", "60", "100", "24"], ans: 1, exp: "1 jam = 60 menit." },
+
+            // ---------- LEVEL 3 ----------
+            { lv: 3, subject: "Matematika", q: "Nilai angka 4 pada bilangan 456 adalah ...", options: ["4", "40", "400", "4.000"], ans: 2, exp: "Angka 4 berada di tempat ratusan, jadi nilainya 400." },
+            { lv: 3, subject: "Matematika", q: "Setengah dari 20 adalah ...", options: ["5", "10", "15", "40"], ans: 1, exp: "20 dibagi 2 = 10." },
+            { lv: 3, subject: "Matematika", q: "Jarum pendek di antara angka 3 dan 4, jarum panjang di angka 6. Waktunya pukul ...", options: ["03.06", "04.30", "03.30", "06.03"], ans: 2, exp: "Jarum panjang di angka 6 berarti 30 menit, jadi pukul 03.30." },
+            { lv: 3, subject: "Matematika", q: "Ani punya 25 kelereng. Ibu memberinya 18 kelereng lagi. Berapa kelereng Ani sekarang?", options: ["33", "43", "45", "53"], ans: 1, exp: "25 + 18 = 43." },
+            { lv: 3, subject: "Matematika", q: "Ibu membeli 3 kantong jeruk. Setiap kantong berisi 5 jeruk. Jumlah semua jeruk adalah ...", options: ["8", "10", "15", "18"], ans: 2, exp: "3 x 5 = 5 + 5 + 5 = 15." },
+            { lv: 3, subject: "Matematika", q: "24 apel dibagi sama banyak kepada 4 anak. Setiap anak mendapat ... apel.", options: ["4", "5", "6", "8"], ans: 2, exp: "24 dibagi 4 = 6." },
+            { lv: 3, subject: "Matematika", q: "Budi punya 50 permen. Ia memakan 17 permen. Sisa permen Budi adalah ...", options: ["67", "43", "33", "37"], ans: 2, exp: "50 - 17 = 33." },
+            { lv: 3, subject: "Matematika", q: "Pita sepanjang 100 cm sama dengan ... meter.", options: ["1", "10", "100", "2"], ans: 0, exp: "100 cm = 1 meter." },
+            { lv: 3, subject: "Bahasa Indonesia", q: "Pilih kalimat yang penulisannya paling benar!", options: ["ibu memasak nasi", "Ibu memasak nasi.", "ibu Memasak Nasi", "Ibu memasak nasi,"], ans: 1, exp: "Kalimat diawali huruf kapital dan diakhiri tanda titik." },
+            { lv: 3, subject: "Bahasa Indonesia", q: "Persamaan kata (sinonim) dari 'cantik' adalah ...", options: ["Indah", "Jelek", "Kotor", "Sempit"], ans: 0, exp: "Cantik dan indah memiliki arti yang mirip." },
+            { lv: 3, subject: "IPAS / Umum", q: "Air laut menguap karena panas Matahari, lalu berkumpul menjadi ...", options: ["Awan", "Batu", "Tanah", "Pasir"], ans: 0, exp: "Uap air naik dan membentuk awan." },
+            { lv: 3, subject: "IPAS / Umum", q: "Benda yang dapat ditarik oleh magnet adalah ...", options: ["Kayu", "Plastik", "Paku besi", "Kertas"], ans: 2, exp: "Magnet menarik benda dari besi." },
+            { lv: 3, subject: "IPAS / Umum", q: "Es batu yang berubah menjadi air disebut ...", options: ["Membeku", "Menguap", "Mencair", "Menyublim"], ans: 2, exp: "Perubahan dari padat (es) ke cair (air) disebut mencair." },
+            { lv: 3, subject: "PPKn", q: "Musyawarah dilakukan untuk ...", options: ["Mengambil keputusan bersama", "Bertengkar", "Memaksakan kehendak", "Menang sendiri"], ans: 0, exp: "Musyawarah adalah berunding untuk mencapai keputusan bersama." },
+            { lv: 3, subject: "PPKn", q: "Bhinneka Tunggal Ika artinya ...", options: ["Berbeda-beda tetapi tetap satu", "Bersatu kita teguh", "Maju terus pantang mundur", "Rajin pangkal pandai"], ans: 0, exp: "Bhinneka Tunggal Ika = berbeda-beda tetapi tetap satu." },
+            { lv: 3, subject: "PPKn", q: "Sila keempat Pancasila berlambang ...", options: ["Kepala Banteng", "Pohon Beringin", "Padi dan Kapas", "Bintang"], ans: 0, exp: "Sila keempat (Kerakyatan) berlambang kepala banteng." },
+            { lv: 3, subject: "Bahasa Inggris", q: "Which one is a fruit?", options: ["Banana", "Table", "Chair", "Book"], ans: 0, exp: "Banana = pisang, sebuah buah." },
+            { lv: 3, subject: "Bahasa Inggris", q: "'Three plus two' is ...", options: ["Four", "Five", "Six", "Seven"], ans: 1, exp: "Three (3) + two (2) = five (5)." }
         ];
 
-        let mapQuestionUsage = {};
-        function resetMapQuestionUsage() {
-            mapQuestionUsage = {};
+        // Tingkat kesulitan per peta
+        const MAP_LEVELS = [[1], [1, 2], [2], [2, 3], [3]];
+
+        function makeMathOptions(correct) {
+            const set = new Set([correct]);
+            const deltas = shuffleArray([1, -1, 2, -2, 10, -10, 5, -5, 3, -3, 20, -20]);
+            for (const d of deltas) {
+                if (set.size >= 4) break;
+                if (correct + d >= 0) set.add(correct + d);
+            }
+            let extra = 11;
+            while (set.size < 4) set.add(correct + extra++);
+            const arr = shuffleArray([...set]);
+            return { options: arr.map(String), ans: arr.indexOf(correct) };
         }
 
-        function getVariedQuestion() {
-            const underTwo = [];
-            const unused = [];
-            QUESTION_BANK.forEach((qObj, idx) => {
-                const count = mapQuestionUsage[idx] || 0;
-                if (count < 2) underTwo.push(idx);
-                if (count === 0) unused.push(idx);
-            });
-            const pool = unused.length > 0 ? unused : (underTwo.length > 0 ? underTwo : QUESTION_BANK.map((_, i) => i));
-            const chosenIdx = pool[Math.floor(Math.random() * pool.length)];
-            mapQuestionUsage[chosenIdx] = (mapQuestionUsage[chosenIdx] || 0) + 1;
-            return QUESTION_BANK[chosenIdx];
+        function generateMath(level) {
+            let q, answer, exp;
+            const type = shuffleArray(level === 1 ? ['add', 'sub', 'mul'] : level === 2 ? ['add', 'sub', 'mul', 'div'] : ['add', 'sub', 'mul', 'div', 'missing'])[0];
+            if (type === 'add') {
+                let a, b;
+                if (level === 1) { a = rnd(5, 30); b = rnd(5, 30); }
+                else if (level === 2) { a = rnd(20, 70); b = rnd(10, 99 - a); }
+                else { a = rnd(100, 450); b = rnd(50, 499); }
+                answer = a + b; q = `Hasil dari ${a} + ${b} adalah ...`; exp = `${a} + ${b} = ${answer}.`;
+            } else if (type === 'sub') {
+                let a, b;
+                if (level === 1) { a = rnd(20, 60); b = rnd(5, a - 5); }
+                else if (level === 2) { a = rnd(40, 99); b = rnd(11, a - 1); }
+                else { a = rnd(300, 900); b = rnd(100, a - 50); }
+                answer = a - b; q = `${a} - ${b} sama dengan ...`; exp = `${a} - ${b} = ${answer}.`;
+            } else if (type === 'mul') {
+                let a, b;
+                if (level === 1) { a = [2, 3, 5, 10][rnd(0, 3)]; b = rnd(1, 5); }
+                else if (level === 2) { a = rnd(2, 5); b = rnd(2, 10); }
+                else { a = rnd(2, 9); b = rnd(6, 10); }
+                answer = a * b;
+                q = `${a} x ${b} sama dengan ...`;
+                exp = `${a} x ${b} = ${Array(b).fill(a).join(' + ')} = ${answer}.`;
+                if (b > 6) exp = `${a} x ${b} = ${answer}.`;
+            } else if (type === 'div') {
+                const b = level === 2 ? rnd(2, 5) : rnd(2, 9);
+                const r = level === 2 ? rnd(2, 10) : rnd(3, 10);
+                answer = r; q = `${b * r} dibagi ${b} sama dengan ...`; exp = `${b * r} dibagi ${b} = ${answer}, karena ${b} x ${answer} = ${b * r}.`;
+            } else {
+                const a = rnd(100, 400), b = rnd(30, 250);
+                answer = b; q = `... + ${a} = ${a + b}. Angka yang tepat untuk mengisi titik-titik adalah ...`; exp = `${a + b} - ${a} = ${answer}.`;
+            }
+            const o = makeMathOptions(answer);
+            return { lv: level, subject: "Matematika", q, options: o.options, ans: o.ans, exp };
         }
 
-        // --- TEMA 5 PETA LEGENDA ---
+        let usedQuestionTexts = new Set();
+        function resetMapQuestionUsage() { usedQuestionTexts = new Set(); }
+
+        function getQuestion() {
+            const levels = MAP_LEVELS[currentMapIndex] || [1];
+            // 40% soal hitungan acak agar tidak monoton
+            if (Math.random() < 0.4) {
+                for (let i = 0; i < 8; i++) {
+                    const g = generateMath(levels[rnd(0, levels.length - 1)]);
+                    if (!usedQuestionTexts.has(g.q)) { usedQuestionTexts.add(g.q); return g; }
+                }
+            }
+            const pool = QUESTION_BANK.filter(q => levels.includes(q.lv) && !usedQuestionTexts.has(q.q));
+            if (pool.length) {
+                const pick = pool[rnd(0, pool.length - 1)];
+                usedQuestionTexts.add(pick.q);
+                return pick;
+            }
+            const g = generateMath(levels[rnd(0, levels.length - 1)]);
+            usedQuestionTexts.add(g.q);
+            return g;
+        }
+
+        // =====================================================================
+        // TEMA PETA
+        // =====================================================================
         const MAP_THEMES = [
             {
                 id: 1, title: "Map 1: Padang Rumput (Slime Rumput)",
-                bg1: "#166534", bg2: "#14532d", tile: "#15803d", accent: "#4ade80",
+                bg1: "#166534", bg2: "#14532d", accent: "#4ade80",
                 monsterName: "Slime Rumput", monsterColor: "#22c55e", monsterType: "slime",
-                hazardType: "none", hazardHint: "Kalahkan 10 Monster Kuis untuk membuka Peti Harta!"
+                hazardType: "none", hazardHint: "Kalahkan 10 Monster Kuis untuk membuka Peti Harta!", obstacle: "bush"
             },
             {
                 id: 2, title: "Map 2: Rawa Misterius (Katak Rawa & Buaya)",
-                bg1: "#1e1b4b", bg2: "#312e81", tile: "#2e1065", accent: "#a855f7",
+                bg1: "#1e1b4b", bg2: "#312e81", accent: "#a855f7",
                 monsterName: "Katak Rawa", monsterColor: "#a855f7", monsterType: "frog",
-                hazardType: "croc", hazardHint: "Awas Buaya Rawa! Loncat (SPACE) menghindarinya!"
+                hazardType: "croc", hazardHint: "Awas Buaya Rawa! Loncat (SPACE) menghindarinya!", obstacle: "rock"
             },
             {
                 id: 3, title: "Map 3: Pemakaman Angker (Hantu Makam)",
-                bg1: "#1e293b", bg2: "#0f172a", tile: "#334155", accent: "#94a3b8",
+                bg1: "#1e293b", bg2: "#0f172a", accent: "#94a3b8",
                 monsterName: "Hantu Makam", monsterColor: "#e2e8f0", monsterType: "ghost",
-                hazardType: "croc", hazardHint: "Waspada penjaga makam yang berpatroli cepat!"
+                hazardType: "croc", hazardHint: "Waspada penjaga makam yang berpatroli cepat!", obstacle: "tomb"
             },
             {
                 id: 4, title: "Map 4: Hutan Lebat (Kelelawar & Macan)",
-                bg1: "#422006", bg2: "#271404", tile: "#713f12", accent: "#f97316",
+                bg1: "#422006", bg2: "#271404", accent: "#f97316",
                 monsterName: "Kelelawar Hutan", monsterColor: "#f97316", monsterType: "bat",
-                hazardType: "tiger", hazardHint: "Awas Macan Hutan! Loncat dan kalahkan 10 Kelelawar!"
+                hazardType: "tiger", hazardHint: "Awas Macan Hutan! Loncat dan kalahkan 10 Kelelawar!", obstacle: "tree"
             },
             {
                 id: 5, title: "Map 5: Labirin Gelap (Mumi & Penjaga)",
-                bg1: "#083344", bg2: "#042f2e", tile: "#115e59", accent: "#22d3ee",
+                bg1: "#083344", bg2: "#042f2e", accent: "#22d3ee",
                 monsterName: "Mumi Labirin", monsterColor: "#fde047", monsterType: "mummy",
-                hazardType: "tiger", hazardHint: "Peta Terakhir! Taklukkan 10 Mumi untuk menjuarai game!"
+                hazardType: "tiger", hazardHint: "Peta Terakhir! Cari jalan keluar labirin ke Peti Harta di atas!", obstacle: "wall"
             }
         ];
 
         const AVATAR_COLORS = ["#38bdf8", "#f43f5e", "#a855f7", "#10b981", "#f59e0b", "#ec4899"];
 
-        // --- STATE GAME ---
+        // =====================================================================
+        // STATE GAME
+        // =====================================================================
         let gameRunning = false;
         let loopStarted = false;
         let lastFrameTime = performance.now();
         let currentMapIndex = 0;
         let score = 0;
         let defeatedCount = 0;
-        const TARGET_DEFEATS = 10;
+        let lives = MAX_LIVES;
+        let mapStats = { correct: 0, wrong: 0 };
         let activeQuizMonsterIndex = -1;
+        let quizAnswered = false;
         let chestOpenAnim = 0;
+        let spawn = { x: MAP_WIDTH / 2 - 17, y: MAP_HEIGHT - 220 };
+        let spawnBounds = { x1: 140, y1: 230, x2: MAP_WIDTH - 140, y2: MAP_HEIGHT - 300 };
 
         const player = {
             name: "Petualang",
@@ -451,7 +592,31 @@
         let decorDots = [];
         const keys = {};
 
-        // --- RESIZE CANVAS AMAN ---
+        // =====================================================================
+        // PROGRES TERSIMPAN (localStorage)
+        // =====================================================================
+        const SAVE_KEY = 'p5pl_progress_v2';
+        function saveProgress() {
+            try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify({ name: player.name, mapIndex: currentMapIndex, score, t: Date.now() }));
+            } catch (e) {}
+        }
+        function loadProgress() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (!raw) return null;
+                const d = JSON.parse(raw);
+                if (typeof d.mapIndex !== 'number' || d.mapIndex < 0 || d.mapIndex >= MAP_THEMES.length) return null;
+                return { name: sanitizeName(d.name), mapIndex: d.mapIndex, score: Math.max(0, Number(d.score) || 0) };
+            } catch (e) { return null; }
+        }
+        function clearProgress() {
+            try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+        }
+
+        // =====================================================================
+        // CANVAS RESIZE (hanya saat ukuran berubah)
+        // =====================================================================
         function resizeCanvas() {
             const frame = canvas.parentElement;
             const isMobile = window.innerWidth < 640;
@@ -464,49 +629,195 @@
         }
         window.addEventListener('resize', resizeCanvas);
         window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(resizeCanvas).observe(canvas.parentElement);
+        }
 
-        function showBanner(msg, isGood = false) {
-            const el = document.getElementById('event-banner');
+        function showBanner(msg, isGood = false, ms = 2600) {
+            const el = $('event-banner');
             el.textContent = msg;
             el.className = `absolute top-14 left-1/2 -translate-x-1/2 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-2xl border-2 z-20 text-center max-w-[90%] ${isGood ? 'bg-emerald-600/95 border-emerald-300' : 'bg-rose-600/95 border-rose-300'}`;
             el.classList.remove('hidden');
             clearTimeout(window._bannerTimer);
-            window._bannerTimer = setTimeout(() => el.classList.add('hidden'), 2600);
+            window._bannerTimer = setTimeout(() => el.classList.add('hidden'), ms);
         }
 
         function updateHUD() {
             const theme = MAP_THEMES[currentMapIndex];
-            document.getElementById('hud-map').textContent = `Map ${theme.id}/5`;
-            document.getElementById('hud-player').textContent = player.name;
-            document.getElementById('hud-score').textContent = score;
-            document.getElementById('hud-monsters').textContent = `${defeatedCount}/${TARGET_DEFEATS}`;
-            document.getElementById('map-theme-title').textContent = theme.title;
-            document.getElementById('map-hazard-hint').textContent = chest.unlocked
-                ? "PETI HARTA TERBUKA! Sentuh Peti Emas di tengah-atas peta!"
+            $('hud-map').textContent = `Map ${theme.id}/5`;
+            $('hud-player').textContent = player.name;
+            $('hud-score').textContent = score;
+            $('hud-monsters').textContent = `${defeatedCount}/${TARGET_DEFEATS}`;
+            $('hud-lives').textContent = '❤️'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, MAX_LIVES - lives));
+            $('map-theme-title').textContent = theme.title;
+            $('map-hazard-hint').textContent = chest.unlocked
+                ? "PETI HARTA TERBUKA! Sentuh Peti Emas di bagian atas peta!"
                 : theme.hazardHint;
         }
 
-        // --- BANGUN PETA ---
+        // =====================================================================
+        // TABRAKAN & PENEMPATAN
+        // =====================================================================
+        function rectOverlap(a, b) {
+            return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        }
+
+        function hitsObstacle(x, y, w, h, pad = 0, onlyHigh = false) {
+            for (const o of obstacles) {
+                if (onlyHigh && !o.high) continue;
+                if (x < o.x + o.width + pad && x + w > o.x - pad && y < o.y + o.height + pad && y + h > o.y - pad) return true;
+            }
+            return false;
+        }
+
+        function hasLineOfSight(ax, ay, bx, by) {
+            const d = Math.hypot(bx - ax, by - ay);
+            const n = Math.ceil(d / 24);
+            for (let i = 1; i < n; i++) {
+                const x = ax + (bx - ax) * i / n;
+                const y = ay + (by - ay) * i / n;
+                if (hitsObstacle(x - 4, y - 4, 8, 8, 0, false)) return false;
+            }
+            return true;
+        }
+
+        function findFreeSpot(w, h, minDist = 240) {
+            const b = spawnBounds;
+            let x = b.x1, y = b.y1;
+            for (let i = 0; i < 100; i++) {
+                x = b.x1 + Math.random() * Math.max(1, b.x2 - b.x1 - w);
+                y = b.y1 + Math.random() * Math.max(1, b.y2 - b.y1 - h);
+                const md = i > 50 ? minDist * 0.4 : minDist;
+                if (Math.hypot(x - player.x, y - player.y) < md) continue;
+                if (hitsObstacle(x, y, w, h, 10)) continue;
+                return { x, y };
+            }
+            return { x, y };
+        }
+
+        function unstickPlayer() {
+            for (let r = 6; r <= 220; r += 6) {
+                for (let k = 0; k < 16; k++) {
+                    const a = k * Math.PI / 8;
+                    const nx = clamp(player.x + Math.cos(a) * r, 40, MAP_WIDTH - 40 - player.width);
+                    const ny = clamp(player.y + Math.sin(a) * r, 40, MAP_HEIGHT - 40 - player.height);
+                    if (!hitsObstacle(nx, ny, player.width, player.height)) {
+                        player.x = nx; player.y = ny;
+                        return;
+                    }
+                }
+            }
+            player.x = spawn.x; player.y = spawn.y;
+        }
+
+        // =====================================================================
+        // PEMBANGUN PETA (termasuk labirin dengan jalan keluar terjamin)
+        // =====================================================================
+        function buildMaze() {
+            const cols = 18, rows = 10, cs = 110, T = 26, ox = 110, oy = 240;
+            const H = [], V = [];
+            for (let r = 0; r <= rows; r++) H.push(new Array(cols).fill(true));
+            for (let r = 0; r < rows; r++) V.push(new Array(cols + 1).fill(true));
+
+            // Recursive backtracker => labirin sempurna (semua sel pasti terhubung)
+            const visited = Array.from({ length: rows }, () => new Array(cols).fill(false));
+            const startR = rows - 1, startC = Math.floor(cols / 2);
+            const stack = [[startR, startC]];
+            visited[startR][startC] = true;
+            while (stack.length) {
+                const [r, c] = stack[stack.length - 1];
+                const nbs = [];
+                if (r > 0 && !visited[r - 1][c]) nbs.push([r - 1, c, 'u']);
+                if (r < rows - 1 && !visited[r + 1][c]) nbs.push([r + 1, c, 'd']);
+                if (c > 0 && !visited[r][c - 1]) nbs.push([r, c - 1, 'l']);
+                if (c < cols - 1 && !visited[r][c + 1]) nbs.push([r, c + 1, 'r']);
+                if (!nbs.length) { stack.pop(); continue; }
+                const [nr, nc, dir] = nbs[rnd(0, nbs.length - 1)];
+                if (dir === 'u') H[r][c] = false;
+                else if (dir === 'd') H[r + 1][c] = false;
+                else if (dir === 'l') V[r][c] = false;
+                else V[r][c + 1] = false;
+                visited[nr][nc] = true;
+                stack.push([nr, nc]);
+            }
+
+            // Buka beberapa dinding tambahan agar ada jalur alternatif
+            for (let i = 0; i < 16; i++) {
+                if (i % 2 === 0) V[rnd(0, rows - 1)][rnd(1, cols - 1)] = false;
+                else H[rnd(1, rows - 1)][rnd(0, cols - 1)] = false;
+            }
+
+            // Pintu keluar menuju peti di bagian atas
+            const gapCol = rnd(3, cols - 4);
+            H[0][gapCol] = false;
+
+            const walls = [];
+            for (let r = 0; r <= rows; r++) {
+                let c = 0;
+                while (c < cols) {
+                    if (H[r][c]) {
+                        const c0 = c;
+                        while (c < cols && H[r][c]) c++;
+                        walls.push({ x: ox + c0 * cs - T / 2, y: oy + r * cs - T / 2, width: (c - c0) * cs + T, height: T, high: true, kind: 'wall' });
+                    } else c++;
+                }
+            }
+            for (let c = 0; c <= cols; c++) {
+                let r = 0;
+                while (r < rows) {
+                    if (V[r][c]) {
+                        const r0 = r;
+                        while (r < rows && V[r][c]) r++;
+                        walls.push({ x: ox + c * cs - T / 2, y: oy + r0 * cs - T / 2, width: T, height: (r - r0) * cs + T, high: true, kind: 'wall' });
+                    } else r++;
+                }
+            }
+
+            return {
+                walls,
+                spawn: { x: ox + startC * cs + cs / 2 - 17, y: oy + startR * cs + cs / 2 - 17 },
+                chestX: ox + gapCol * cs + cs / 2 - 42,
+                bounds: { x1: ox + 24, y1: oy + 24, x2: ox + cols * cs - 24, y2: oy + rows * cs - 24 }
+            };
+        }
+
         function buildMap(mapIdx) {
             currentMapIndex = mapIdx;
             defeatedCount = 0;
+            lives = MAX_LIVES;
+            mapStats = { correct: 0, wrong: 0 };
             chestOpenAnim = 0;
             chest.unlocked = false;
+            chest.x = MAP_WIDTH / 2 - 42;
             activeQuizMonsterIndex = -1;
+            quizAnswered = false;
+            $('quiz-modal').classList.add('hidden');
             resetMapQuestionUsage();
-
-            player.x = MAP_WIDTH / 2 - player.width / 2;
-            player.y = MAP_HEIGHT - 220;
-            player.jumpZ = 0;
-            player.isJumping = false;
-            player.invulnTimer = 150; // Perisai spawn 2.5 detik
 
             obstacles = [];
             monsters = [];
             hazards = [];
             decorDots = [];
 
-            // Dekorasi rumput / batu 64-bit
+            spawn = { x: MAP_WIDTH / 2 - 17, y: MAP_HEIGHT - 220 };
+            spawnBounds = { x1: 140, y1: 230, x2: MAP_WIDTH - 140, y2: MAP_HEIGHT - 300 };
+
+            const isMaze = mapIdx === 4;
+            if (isMaze) {
+                const maze = buildMaze();
+                obstacles = maze.walls;
+                spawn = maze.spawn;
+                chest.x = maze.chestX;
+                spawnBounds = maze.bounds;
+            }
+
+            player.x = spawn.x;
+            player.y = spawn.y;
+            player.jumpZ = 0;
+            player.jumpVel = 0;
+            player.isJumping = false;
+            player.invulnTimer = 150;
+
             for (let i = 0; i < 160; i++) {
                 decorDots.push({
                     x: 60 + Math.random() * (MAP_WIDTH - 120),
@@ -516,35 +827,36 @@
                 });
             }
 
-            // Rintangan alam / tembok labirin (hindari area spawn bawah & area peti atas)
-            const obsCount = mapIdx === 4 ? 26 : 16;
-            for (let i = 0; i < obsCount; i++) {
-                const ow = mapIdx === 4 ? (i % 2 === 0 ? 150 : 52) : 68;
-                const oh = mapIdx === 4 ? (i % 2 === 0 ? 52 : 150) : 56;
-                const ox = 140 + Math.random() * (MAP_WIDTH - 340);
-                const oy = 240 + Math.random() * (MAP_HEIGHT - 560);
-                if (Math.hypot(ox - MAP_WIDTH / 2, oy - (MAP_HEIGHT - 220)) < 190) continue;
-                if (Math.hypot(ox - MAP_WIDTH / 2, oy - 150) < 190) continue;
-                obstacles.push({ x: ox, y: oy, width: ow, height: oh });
+            // Rintangan alam (peta 1-4): tidak saling menempel, tidak menutup spawn & peti
+            if (!isMaze) {
+                const theme = MAP_THEMES[mapIdx];
+                let tries = 0;
+                while (obstacles.length < 18 && tries++ < 400) {
+                    const ow = 68, oh = 56;
+                    const ox = 140 + Math.random() * (MAP_WIDTH - 340);
+                    const oy = 240 + Math.random() * (MAP_HEIGHT - 560);
+                    if (Math.hypot(ox + ow / 2 - (spawn.x + 17), oy + oh / 2 - (spawn.y + 17)) < 210) continue;
+                    if (Math.hypot(ox + ow / 2 - MAP_WIDTH / 2, oy + oh / 2 - 150) < 200) continue;
+                    const pad = 52;
+                    const clash = obstacles.some(o => ox < o.x + o.width + pad && ox + ow > o.x - pad && oy < o.y + o.height + pad && oy + oh > o.y - pad);
+                    if (clash) continue;
+                    obstacles.push({ x: ox, y: oy, width: ow, height: oh, high: false, kind: theme.obstacle });
+                }
             }
 
-            // Spawn 10 Monster Kuis dengan soal variatif
-            for (let i = 0; i < TARGET_DEFEATS; i++) {
-                spawnSingleMonster(i);
-            }
+            for (let i = 0; i < TARGET_DEFEATS; i++) spawnSingleMonster(i);
 
-            // Spawn Musuh Bahaya (Buaya / Macan) mulai Map 2
             const theme = MAP_THEMES[mapIdx];
             if (theme.hazardType !== "none") {
-                const hCount = mapIdx + 1;
+                const hCount = isMaze ? 3 : mapIdx + 1;
                 for (let i = 0; i < hCount; i++) {
+                    const p = findFreeSpot(56, 36, 320);
                     hazards.push({
-                        x: 220 + i * 380,
-                        y: 360 + (i % 2) * 320,
-                        width: 56,
-                        height: 36,
+                        x: p.x, y: p.y,
+                        width: 56, height: 36,
                         vx: (i % 2 === 0 ? 1 : -1) * (1.65 + mapIdx * 0.18),
                         vy: (i % 2 === 0 ? 1 : -1) * 1.05,
+                        facing: 1,
                         type: theme.hazardType
                     });
                 }
@@ -555,69 +867,109 @@
 
         function spawnSingleMonster(id) {
             const theme = MAP_THEMES[currentMapIndex];
-            let mx = 200, my = 300;
-            for (let attempt = 0; attempt < 25; attempt++) {
-                mx = 140 + Math.random() * (MAP_WIDTH - 320);
-                my = 230 + Math.random() * (MAP_HEIGHT - 540);
-                if (Math.hypot(mx - player.x, my - player.y) > 220) break;
-            }
+            const p = findFreeSpot(40, 40, 240);
             monsters.push({
                 id,
-                x: mx,
-                y: my,
-                width: 40,
-                height: 40,
+                x: p.x, y: p.y,
+                width: 40, height: 40,
                 vx: (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.65),
                 vy: (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.65),
                 name: theme.monsterName,
                 color: theme.monsterColor,
                 type: theme.monsterType,
                 defeated: false,
-                question: getVariedQuestion()
+                question: getQuestion(),
+                view: []
             });
         }
 
-        // --- SISTEM KUIS ---
+        // =====================================================================
+        // SISTEM KUIS (opsi diacak, jawaban benar + penjelasan saat salah)
+        // =====================================================================
         function openQuizModal(monster, idx) {
             if (activeQuizMonsterIndex !== -1 || !monster) return;
             activeQuizMonsterIndex = idx;
+            quizAnswered = false;
             Object.keys(keys).forEach(k => keys[k] = false);
 
-            const modal = document.getElementById('quiz-modal');
-            const badge = document.getElementById('quiz-badge');
-            const qText = document.getElementById('quiz-question');
-            const optionsDiv = document.getElementById('quiz-options');
-            const feedback = document.getElementById('quiz-feedback');
-
+            const badge = $('quiz-badge');
+            const optionsDiv = $('quiz-options');
             badge.textContent = `${monster.name.toUpperCase()} • ${monster.question.subject.toUpperCase()}`;
-            qText.textContent = monster.question.q;
+            $('quiz-question').textContent = monster.question.q;
+            $('quiz-feedback').classList.add('hidden');
+            $('quiz-explain').classList.add('hidden');
+            $('btn-quiz-next').classList.add('hidden');
             optionsDiv.innerHTML = '';
-            feedback.classList.add('hidden');
 
-            monster.question.options.forEach((opt, oIdx) => {
+            monster.view = shuffleArray(monster.question.options.map((text, orig) => ({ text, orig })));
+            monster.view.forEach((opt, vIdx) => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = "w-full text-left p-3 rounded-xl bg-slate-800/90 hover:bg-amber-500/35 border border-slate-600 hover:border-amber-400 text-slate-100 text-xs sm:text-sm font-semibold transition-all flex items-center justify-between cursor-pointer";
-                btn.innerHTML = `<span><strong class="text-amber-400 mr-2">${String.fromCharCode(65 + oIdx)}.</strong> ${opt}</span><i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>`;
-                btn.onclick = () => submitAnswer(oIdx);
+                const span = document.createElement('span');
+                const letter = document.createElement('strong');
+                letter.className = 'text-amber-400 mr-2';
+                letter.textContent = String.fromCharCode(65 + vIdx) + '.';
+                span.appendChild(letter);
+                span.appendChild(document.createTextNode(' ' + opt.text));
+                const chev = document.createElement('i');
+                chev.className = 'fa-solid fa-chevron-right text-slate-500 text-xs';
+                btn.appendChild(span);
+                btn.appendChild(chev);
+                btn.addEventListener('click', () => submitAnswer(vIdx));
                 optionsDiv.appendChild(btn);
             });
 
-            modal.classList.remove('hidden');
+            $('quiz-modal').classList.remove('hidden');
         }
 
-        function submitAnswer(selectedIdx) {
+        function closeQuiz(invuln) {
+            $('quiz-modal').classList.add('hidden');
+            activeQuizMonsterIndex = -1;
+            player.invulnTimer = invuln;
+        }
+
+        function finishWrong() {
             const idx = activeQuizMonsterIndex;
             const monster = monsters[idx];
-            if (!monster) return;
+            if (idx === -1 || !monster) return;
+            monster.question = getQuestion();
+            const p = findFreeSpot(monster.width, monster.height, 260);
+            monster.x = p.x;
+            monster.y = p.y;
+            closeQuiz(90);
+        }
 
-            const feedback = document.getElementById('quiz-feedback');
-            const buttons = document.getElementById('quiz-options').querySelectorAll('button');
-            buttons.forEach(b => b.disabled = true);
+        function submitAnswer(viewIdx) {
+            const idx = activeQuizMonsterIndex;
+            const monster = monsters[idx];
+            if (!monster || quizAnswered) return;
+            quizAnswered = true;
 
-            if (selectedIdx === monster.question.ans) {
+            const feedback = $('quiz-feedback');
+            const explain = $('quiz-explain');
+            const buttons = $('quiz-options').querySelectorAll('button');
+            const correctView = monster.view.findIndex(v => v.orig === monster.question.ans);
+            const isCorrect = viewIdx === correctView;
+
+            buttons.forEach((b, i) => {
+                b.disabled = true;
+                let cls = "w-full text-left p-3 rounded-xl border text-xs sm:text-sm font-semibold flex items-center justify-between ";
+                if (i === correctView) cls += "bg-emerald-500/30 border-emerald-400 text-emerald-100";
+                else if (i === viewIdx) cls += "bg-rose-500/30 border-rose-400 text-rose-100";
+                else cls += "bg-slate-800/60 border-slate-700 text-slate-400";
+                b.className = cls;
+            });
+
+            if (monster.question.exp) {
+                explain.textContent = '💡 ' + monster.question.exp;
+                explain.classList.remove('hidden');
+            }
+
+            if (isCorrect) {
                 sfx.correct();
                 score += 20;
+                mapStats.correct++;
                 monster.defeated = true;
                 defeatedCount++;
 
@@ -628,39 +980,30 @@
                 if (defeatedCount >= TARGET_DEFEATS) {
                     chest.unlocked = true;
                     sfx.chest();
-                    showBanner("PETI HARTA EMAS TERBUKA DI TENGAH-ATAS PETA!", true);
+                    showBanner("PETI HARTA EMAS TERBUKA DI BAGIAN ATAS PETA!", true);
                 }
 
                 updateHUD();
-                syncMultiplayerProgress();
+                writeState(true);
 
                 setTimeout(() => {
-                    document.getElementById('quiz-modal').classList.add('hidden');
-                    activeQuizMonsterIndex = -1;
-                    player.invulnTimer = 60;
-                }, 950);
+                    if (activeQuizMonsterIndex === idx) closeQuiz(60);
+                }, 1700);
             } else {
                 sfx.wrong();
-                feedback.textContent = "Kurang tepat! Monster berpindah & mengganti soal baru...";
+                mapStats.wrong++;
+                feedback.textContent = `Kurang tepat. Jawaban yang benar: ${String.fromCharCode(65 + correctView)}. ${monster.view[correctView].text}`;
                 feedback.className = "p-3 rounded-xl text-center text-xs sm:text-sm font-bold bg-rose-500/25 text-rose-300 border border-rose-400";
                 feedback.classList.remove('hidden');
-
-                setTimeout(() => {
-                    monster.question = getVariedQuestion();
-                    monster.x = 160 + Math.random() * (MAP_WIDTH - 360);
-                    monster.y = 240 + Math.random() * (MAP_HEIGHT - 560);
-                    document.getElementById('quiz-modal').classList.add('hidden');
-                    activeQuizMonsterIndex = -1;
-                    player.invulnTimer = 90;
-                }, 1150);
+                $('btn-quiz-next').classList.remove('hidden');
             }
         }
 
-        // --- UPDATE LOGIKA GAME ---
-        function rectOverlap(a, b) {
-            return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-        }
+        $('btn-quiz-next').addEventListener('click', finishWrong);
 
+        // =====================================================================
+        // UPDATE LOGIKA GAME
+        // =====================================================================
         function triggerJump() {
             if (!gameRunning || activeQuizMonsterIndex !== -1) return;
             if (!player.isJumping) {
@@ -670,13 +1013,81 @@
             }
         }
 
+        function moveBouncing(e, dt) {
+            const nx = e.x + e.vx * dt;
+            if (hitsObstacle(nx, e.y, e.width, e.height)) e.vx = -e.vx; else e.x = nx;
+            const ny = e.y + e.vy * dt;
+            if (hitsObstacle(e.x, ny, e.width, e.height)) e.vy = -e.vy; else e.y = ny;
+        }
+
+        // return true jika peta dibangun ulang (nyawa habis)
+        function updateHazards(dt) {
+            for (const h of hazards) {
+                const hcx = h.x + h.width / 2, hcy = h.y + h.height / 2;
+                const pcx = player.x + player.width / 2, pcy = player.y + player.height / 2;
+                const dist = Math.hypot(pcx - hcx, pcy - hcy);
+
+                if (dist < 280 && player.invulnTimer === 0 && hasLineOfSight(hcx, hcy, pcx, pcy)) {
+                    const ang = Math.atan2(pcy - hcy, pcx - hcx);
+                    const sx = Math.cos(ang) * 1.85 * dt;
+                    const sy = Math.sin(ang) * 1.85 * dt;
+                    if (!hitsObstacle(h.x + sx, h.y, h.width, h.height)) h.x += sx;
+                    if (!hitsObstacle(h.x, h.y + sy, h.width, h.height)) h.y += sy;
+                    if (Math.abs(sx) > 0.05) h.facing = sx >= 0 ? 1 : -1;
+                } else {
+                    moveBouncing(h, dt);
+                    h.facing = h.vx >= 0 ? 1 : -1;
+                }
+                h.x = clamp(h.x, 80, MAP_WIDTH - 130);
+                h.y = clamp(h.y, 200, MAP_HEIGHT - 140);
+
+                if (player.invulnTimer === 0 && player.jumpZ < 18 && rectOverlap(player, h)) {
+                    sfx.hurt();
+                    lives--;
+                    if (lives <= 0) {
+                        showBanner("Nyawa habis! Peta diulang dari awal. Semangat!", false, 3200);
+                        buildMap(currentMapIndex);
+                        writeState(true);
+                        return true;
+                    }
+                    showBanner(`Aduh! Terkena ${h.type === 'croc' ? 'Buaya Rawa' : 'Macan Hutan'}! Nyawa tersisa ${lives}.`);
+                    player.x = spawn.x;
+                    player.y = spawn.y;
+                    player.invulnTimer = 140;
+                    updateHUD();
+                }
+            }
+            return false;
+        }
+
+        function completeMap() {
+            sfx.chest();
+            const bonus = lives * 10;
+            score += bonus;
+            const total = mapStats.correct + mapStats.wrong;
+            const acc = total ? Math.round(mapStats.correct / total * 100) : 100;
+
+            if (currentMapIndex + 1 < MAP_THEMES.length) {
+                const nextIdx = currentMapIndex + 1;
+                showBanner(`Peta selesai! Akurasi ${acc}% • Bonus nyawa +${bonus} • Menuju ${MAP_THEMES[nextIdx].title}`, true, 3800);
+                buildMap(nextIdx);
+                saveProgress();
+                writeState(true);
+            } else {
+                gameRunning = false;
+                clearProgress();
+                $('victory-score').textContent = score;
+                $('overlay-victory').classList.remove('hidden');
+                updateHUD();
+                writeState(true);
+            }
+        }
+
         function update(dt = 1) {
             if (!gameRunning) return;
-            resizeCanvas();
 
             if (player.invulnTimer > 0) player.invulnTimer = Math.max(0, player.invulnTimer - dt);
 
-            // Lompatan berbasis Delta-Time (konsisten di 60Hz, 90Hz, maupun 120Hz)
             if (player.isJumping) {
                 player.jumpZ += player.jumpVel * dt;
                 player.jumpVel -= 0.58 * dt;
@@ -687,8 +1098,9 @@
                 }
             }
 
-            // Gerakan Pemain (jika tidak sedang membuka modal kuis)
-            if (activeQuizMonsterIndex === -1) {
+            const quizOpen = activeQuizMonsterIndex !== -1;
+
+            if (!quizOpen) {
                 let dx = 0, dy = 0;
                 if (keys['ArrowUp'] || keys['w'] || keys['W']) dy -= 1;
                 if (keys['ArrowDown'] || keys['s'] || keys['S']) dy += 1;
@@ -704,88 +1116,52 @@
                     player.walkCycle += 0.24 * dt;
 
                     const step = player.speed * dt;
-                    const nextX = Math.max(40, Math.min(MAP_WIDTH - 40 - player.width, player.x + dx * step));
-                    const nextY = Math.max(40, Math.min(MAP_HEIGHT - 40 - player.height, player.y + dy * step));
+                    const nextX = clamp(player.x + dx * step, 40, MAP_WIDTH - 40 - player.width);
+                    const nextY = clamp(player.y + dy * step, 40, MAP_HEIGHT - 40 - player.height);
+                    // Saat melompat hanya dinding tinggi (labirin) yang menghalangi
+                    const onlyHigh = player.jumpZ > 14;
+                    if (!hitsObstacle(nextX, player.y, player.width, player.height, 0, onlyHigh)) player.x = nextX;
+                    if (!hitsObstacle(player.x, nextY, player.width, player.height, 0, onlyHigh)) player.y = nextY;
+                }
 
-                    const canPassObstacles = player.jumpZ > 14;
-                    let blockedX = false, blockedY = false;
-                    if (!canPassObstacles) {
-                        for (const obs of obstacles) {
-                            if (rectOverlap({ x: nextX, y: player.y, width: player.width, height: player.height }, obs)) blockedX = true;
-                            if (rectOverlap({ x: player.x, y: nextY, width: player.width, height: player.height }, obs)) blockedY = true;
-                        }
-                    }
-                    if (!blockedX) player.x = nextX;
-                    if (!blockedY) player.y = nextY;
+                // Cegah pemain tersangkut di dalam rintangan setelah mendarat
+                if (player.jumpZ <= 14 && hitsObstacle(player.x, player.y, player.width, player.height)) {
+                    unstickPlayer();
                 }
             }
 
-            // Update Monster Kuis (Kecepatan stabil berbasis dt)
-            monsters.forEach((m, idx) => {
-                if (m.defeated) return;
-                m.x += m.vx * dt;
-                m.y += m.vy * dt;
-                if (m.x < 70) { m.x = 70; m.vx = Math.abs(m.vx); }
-                if (m.x > MAP_WIDTH - 110) { m.x = MAP_WIDTH - 110; m.vx = -Math.abs(m.vx); }
-                if (m.y < 180) { m.y = 180; m.vy = Math.abs(m.vy); }
-                if (m.y > MAP_HEIGHT - 120) { m.y = MAP_HEIGHT - 120; m.vy = -Math.abs(m.vy); }
-
-                if (activeQuizMonsterIndex === -1 && player.jumpZ < 16 && rectOverlap(player, m)) {
-                    openQuizModal(m, idx);
+            if (!quizOpen) {
+                for (let idx = 0; idx < monsters.length; idx++) {
+                    const m = monsters[idx];
+                    if (m.defeated) continue;
+                    moveBouncing(m, dt);
+                    m.x = clamp(m.x, 70, MAP_WIDTH - 110);
+                    m.y = clamp(m.y, 180, MAP_HEIGHT - 120);
+                    if (player.jumpZ < 16 && rectOverlap(player, m)) {
+                        openQuizModal(m, idx);
+                        break;
+                    }
                 }
-            });
+                if (activeQuizMonsterIndex === -1 && updateHazards(dt)) return;
+            }
 
-            // Update Bahaya (Buaya / Macan) berbasis dt
-            hazards.forEach(h => {
-                const dist = Math.hypot(player.x - h.x, player.y - h.y);
-                if (dist < 280 && player.invulnTimer === 0) {
-                    const ang = Math.atan2(player.y - h.y, player.x - h.x);
-                    h.x += Math.cos(ang) * 1.85 * dt;
-                    h.y += Math.sin(ang) * 1.85 * dt;
-                } else {
-                    h.x += h.vx * dt;
-                    h.y += h.vy * dt;
-                    if (h.x < 80) { h.x = 80; h.vx = Math.abs(h.vx); }
-                    if (h.x > MAP_WIDTH - 130) { h.x = MAP_WIDTH - 130; h.vx = -Math.abs(h.vx); }
-                    if (h.y < 200) { h.y = 200; h.vy = Math.abs(h.vy); }
-                    if (h.y > MAP_HEIGHT - 140) { h.y = MAP_HEIGHT - 140; h.vy = -Math.abs(h.vy); }
-                }
-
-                if (activeQuizMonsterIndex === -1 && player.invulnTimer === 0 && player.jumpZ < 18 && rectOverlap(player, h)) {
-                    sfx.hurt();
-                    showBanner(`Aduh! Terkena ${h.type === 'croc' ? 'Buaya Rawa' : 'Macan Hutan'}! Kembali ke titik awal map.`);
-                    player.x = MAP_WIDTH / 2 - player.width / 2;
-                    player.y = MAP_HEIGHT - 220;
-                    player.invulnTimer = 140;
-                }
-            });
-
-            // Cek Peti Harta Karun
             if (chest.unlocked) {
                 const dChest = Math.hypot((player.x + 17) - (chest.x + 42), (player.y + 17) - (chest.y + 33));
-                if (dChest < 140) {
-                    chestOpenAnim = Math.min(1, chestOpenAnim + 0.08 * dt);
-                }
-                if (rectOverlap(player, chest) && activeQuizMonsterIndex === -1) {
-                    sfx.chest();
-                    if (currentMapIndex + 1 < MAP_THEMES.length) {
-                        const nextIdx = currentMapIndex + 1;
-                        showBanner(`Peti Dibuka! Memasuki ${MAP_THEMES[nextIdx].title}!`, true);
-                        buildMap(nextIdx);
-                        syncMultiplayerMapChange(nextIdx);
-                    } else {
-                        gameRunning = false;
-                        document.getElementById('victory-score').textContent = score;
-                        document.getElementById('overlay-victory').classList.remove('hidden');
-                    }
+                if (dChest < 140) chestOpenAnim = Math.min(1, chestOpenAnim + 0.08 * dt);
+                if (activeQuizMonsterIndex === -1 && rectOverlap(player, chest)) {
+                    completeMap();
+                    return;
                 }
             }
 
-            syncMultiplayerPosition();
+            writeState();
         }
 
-        // --- RENDER GRAFIS 64-BIT ---
+        // =====================================================================
+        // RENDER
+        // =====================================================================
         function drawRoundedRect(x, y, w, h, r) {
+            r = Math.min(r, w / 2, h / 2);
             ctx.beginPath();
             ctx.moveTo(x + r, y);
             ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -796,25 +1172,19 @@
         }
 
         function drawRPGCharacter(x, y, w, h, color, name, walkCycle, dirX, dirY, jumpZ, invulnTimer) {
-            if (invulnTimer > 0 && Math.floor(invulnTimer / 6) % 2 === 0) {
-                ctx.save();
-                ctx.globalAlpha = 0.55;
-            } else {
-                ctx.save();
-            }
+            ctx.save();
+            if (invulnTimer > 0 && Math.floor(invulnTimer / 6) % 2 === 0) ctx.globalAlpha = 0.55;
 
             const cx = x + w / 2;
             const groundY = y + h;
             const drawY = y - jumpZ;
             const bob = Math.sin(walkCycle) * 2.5;
 
-            // Bayangan 64-bit
             ctx.fillStyle = "rgba(0,0,0,0.38)";
             ctx.beginPath();
-            ctx.ellipse(cx, groundY + 2, 16 - jumpZ * 0.12, 6, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx, groundY + 2, Math.max(6, 16 - jumpZ * 0.12), 6, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Perisai Spawn bercahaya
             if (invulnTimer > 0) {
                 ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
                 ctx.lineWidth = 2.5;
@@ -823,7 +1193,6 @@
                 ctx.stroke();
             }
 
-            // Syal RPG berkibar dinamis
             const wave = Math.sin(Date.now() * 0.01 + walkCycle) * 5;
             ctx.fillStyle = "#ef4444";
             ctx.beginPath();
@@ -834,13 +1203,11 @@
             ctx.closePath();
             ctx.fill();
 
-            // Kaki melangkah
             const legSwing = Math.sin(walkCycle) * 4;
             ctx.fillStyle = "#1e293b";
             drawRoundedRect(cx - 10, drawY + 26 + legSwing * 0.4, 7, 9, 3); ctx.fill();
             drawRoundedRect(cx + 3, drawY + 26 - legSwing * 0.4, 7, 9, 3); ctx.fill();
 
-            // Badan Armor Gradien 64-bit
             const bodyGrad = ctx.createLinearGradient(cx - 12, drawY + 12, cx + 12, drawY + 29);
             bodyGrad.addColorStop(0, color);
             bodyGrad.addColorStop(1, "#0f172a");
@@ -848,12 +1215,10 @@
             drawRoundedRect(cx - 12, drawY + 13 + bob, 24, 16, 6);
             ctx.fill();
 
-            // Kerah Syal Merah
             ctx.fillStyle = "#dc2626";
             drawRoundedRect(cx - 11, drawY + 13 + bob, 22, 5, 2.5);
             ctx.fill();
 
-            // Tameng Ksatria (Kiri)
             ctx.fillStyle = "#2563eb";
             ctx.strokeStyle = "#fbbf24";
             ctx.lineWidth = 2;
@@ -867,7 +1232,6 @@
             ctx.fill();
             ctx.stroke();
 
-            // Pedang Baja Berkilau (Kanan)
             const swordSwing = Math.sin(walkCycle) * 0.25;
             ctx.save();
             ctx.translate(cx + 14, drawY + 20 + bob);
@@ -880,7 +1244,6 @@
             ctx.fillRect(-1.5, 0, 3, 5);
             ctx.restore();
 
-            // Kepala & Wajah Ekspresif
             const headGrad = ctx.createRadialGradient(cx - 3, drawY + 4 + bob, 2, cx, drawY + 7 + bob, 13);
             headGrad.addColorStop(0, "#ffedd5");
             headGrad.addColorStop(1, "#fdba74");
@@ -889,13 +1252,11 @@
             ctx.arc(cx, drawY + 7 + bob, 11.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Rambut / Topi Petualang
             ctx.fillStyle = "#1e293b";
             ctx.beginPath();
             ctx.arc(cx, drawY + 4 + bob, 11.5, Math.PI, Math.PI * 2);
             ctx.fill();
 
-            // Mata ekspresif mengikuti arah jalan
             const lookX = dirX * 2.2;
             const lookY = dirY * 1.2;
             ctx.fillStyle = "#0f172a";
@@ -904,12 +1265,10 @@
             ctx.arc(cx + 4 + lookX, drawY + 7 + bob + lookY, 2.1, 0, Math.PI * 2);
             ctx.fill();
 
-            // Kilau mata
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(cx - 4.8 + lookX, drawY + 5.8 + bob + lookY, 1.2, 1.2);
             ctx.fillRect(cx + 3.2 + lookX, drawY + 5.8 + bob + lookY, 1.2, 1.2);
 
-            // Mulut (senyum / kaget saat loncat)
             ctx.strokeStyle = "#9a3412";
             ctx.lineWidth = 1.6;
             ctx.beginPath();
@@ -920,7 +1279,6 @@
             }
             ctx.stroke();
 
-            // Lencana Nama
             ctx.font = "bold 11px Fredoka, sans-serif";
             const tw = ctx.measureText(name).width + 12;
             ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
@@ -938,7 +1296,6 @@
             const cx = x + w / 2;
 
             ctx.save();
-            // Aura cahaya jika sudah terbuka
             if (chest.unlocked) {
                 const pulse = 1 + Math.sin(Date.now() * 0.006) * 0.12;
                 const aura = ctx.createRadialGradient(cx, y + h / 2, 8, cx, y + h / 2, 78 * pulse);
@@ -951,13 +1308,11 @@
                 ctx.fill();
             }
 
-            // Bayangan Peti
             ctx.fillStyle = "rgba(0,0,0,0.45)";
             ctx.beginPath();
             ctx.ellipse(cx, y + h + 4, w * 0.55, 10, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Badan Peti Kayu & Emas
             const woodGrad = ctx.createLinearGradient(x, y + 20, x, y + h);
             woodGrad.addColorStop(0, chest.unlocked ? "#b45309" : "#475569");
             woodGrad.addColorStop(1, chest.unlocked ? "#78350f" : "#1e293b");
@@ -965,13 +1320,11 @@
             drawRoundedRect(x, y + 22, w, h - 22, 8);
             ctx.fill();
 
-            // Bingkai Emas
             ctx.strokeStyle = chest.unlocked ? "#fbbf24" : "#64748b";
             ctx.lineWidth = 4;
             drawRoundedRect(x, y + 22, w, h - 22, 8);
             ctx.stroke();
 
-            // Tutup Peti (terangkat jika terbuka)
             const lidLift = chest.unlocked ? (8 + chestOpenAnim * 14) : 0;
             ctx.fillStyle = chest.unlocked ? "#d97706" : "#334155";
             drawRoundedRect(x - 2, y + 4 - lidLift, w + 4, 22, 9);
@@ -979,17 +1332,252 @@
             ctx.strokeStyle = chest.unlocked ? "#fde047" : "#64748b";
             ctx.stroke();
 
-            // Gembok Tengah
             ctx.fillStyle = chest.unlocked ? "#fef08a" : "#94a3b8";
             drawRoundedRect(cx - 9, y + 20, 18, 18, 4);
             ctx.fill();
 
-            // Label Status Peti
             ctx.font = "bold 12px Fredoka, sans-serif";
             ctx.textAlign = "center";
             ctx.fillStyle = chest.unlocked ? "#fde047" : "#cbd5e1";
             ctx.fillText(chest.unlocked ? "✨ PETI HADIAH TERBUKA! ✨" : `🔒 Kalahkan ${TARGET_DEFEATS - defeatedCount} Monster lagi`, cx, y - 10 - lidLift);
             ctx.restore();
+        }
+
+        function drawObstacle(o) {
+            const cx = o.x + o.width / 2, cy = o.y + o.height / 2;
+            // bayangan
+            ctx.fillStyle = "rgba(0,0,0,0.35)";
+            if (o.kind === 'wall') {
+                drawRoundedRect(o.x + 3, o.y + 5, o.width, o.height, 5);
+                ctx.fill();
+                const g = ctx.createLinearGradient(o.x, o.y, o.x, o.y + o.height);
+                g.addColorStop(0, "#0e7490");
+                g.addColorStop(1, "#164e63");
+                ctx.fillStyle = g;
+                drawRoundedRect(o.x, o.y, o.width, o.height, 5);
+                ctx.fill();
+                ctx.strokeStyle = "rgba(103,232,249,0.35)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                return;
+            }
+            ctx.beginPath();
+            ctx.ellipse(cx + 4, o.y + o.height + 2, o.width * 0.5, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (o.kind === 'bush') {
+                ctx.fillStyle = "#15803d";
+                [[-18, 6, 17], [0, -4, 21], [18, 6, 17], [0, 10, 18]].forEach(([dx, dy, r]) => {
+                    ctx.beginPath(); ctx.arc(cx + dx, cy + dy, r, 0, Math.PI * 2); ctx.fill();
+                });
+                ctx.fillStyle = "#4ade80";
+                ctx.beginPath(); ctx.arc(cx - 4, cy - 8, 6, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#f43f5e";
+                ctx.beginPath(); ctx.arc(cx + 12, cy + 2, 3, 0, Math.PI * 2); ctx.arc(cx - 14, cy + 8, 3, 0, Math.PI * 2); ctx.fill();
+            } else if (o.kind === 'rock') {
+                const g = ctx.createLinearGradient(o.x, o.y, o.x, o.y + o.height);
+                g.addColorStop(0, "#6b7280"); g.addColorStop(1, "#1f2937");
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.moveTo(o.x + 4, o.y + o.height);
+                ctx.lineTo(o.x + 10, o.y + 16);
+                ctx.lineTo(o.x + 26, o.y + 2);
+                ctx.lineTo(o.x + 48, o.y + 6);
+                ctx.lineTo(o.x + o.width - 2, o.y + 26);
+                ctx.lineTo(o.x + o.width - 6, o.y + o.height);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = "#16a34a";
+                ctx.beginPath(); ctx.arc(o.x + 22, o.y + 8, 7, Math.PI, 0); ctx.fill();
+            } else if (o.kind === 'tomb') {
+                const g = ctx.createLinearGradient(o.x, o.y, o.x, o.y + o.height);
+                g.addColorStop(0, "#94a3b8"); g.addColorStop(1, "#334155");
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.moveTo(o.x + 10, o.y + o.height);
+                ctx.lineTo(o.x + 10, o.y + 22);
+                ctx.arc(cx, o.y + 22, o.width / 2 - 10, Math.PI, 0);
+                ctx.lineTo(o.x + o.width - 10, o.y + o.height);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = "#0f172a";
+                ctx.fillRect(cx - 2, o.y + 14, 4, 22);
+                ctx.fillRect(cx - 9, o.y + 21, 18, 4);
+            } else { // tree
+                ctx.fillStyle = "#78350f";
+                drawRoundedRect(cx - 9, o.y + 14, 18, o.height - 10, 4); ctx.fill();
+                ctx.fillStyle = "#166534";
+                ctx.beginPath(); ctx.arc(cx, o.y + 8, 30, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#15803d";
+                ctx.beginPath(); ctx.arc(cx - 10, o.y + 2, 18, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "rgba(255,255,255,0.12)";
+                ctx.beginPath(); ctx.arc(cx - 14, o.y - 4, 7, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        function drawEyes(x1, x2, y, r) {
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.arc(x1, y, r + 1.5, 0, Math.PI * 2); ctx.arc(x2, y, r + 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#0f172a";
+            ctx.beginPath(); ctx.arc(x1, y + 0.5, r, 0, Math.PI * 2); ctx.arc(x2, y + 0.5, r, 0, Math.PI * 2); ctx.fill();
+        }
+
+        function drawMonster(m) {
+            const t = Date.now() * 0.006 + m.id;
+            const bounce = Math.sin(t) * 4;
+            const mx = m.x + m.width / 2;
+            const my = m.y + m.height / 2 + bounce;
+
+            ctx.fillStyle = "rgba(0,0,0,0.35)";
+            ctx.beginPath();
+            ctx.ellipse(mx, m.y + m.height + 2, 18, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.save();
+            ctx.translate(mx, my);
+            switch (m.type) {
+                case 'slime': {
+                    const g = ctx.createRadialGradient(-5, -6, 3, 0, 0, 24);
+                    g.addColorStop(0, "#ffffff"); g.addColorStop(0.4, m.color); g.addColorStop(1, "#14532d");
+                    ctx.fillStyle = g;
+                    const sq = Math.sin(t * 1.5) * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-21, 14);
+                    ctx.quadraticCurveTo(-23, -22 - sq, 0, -22 - sq);
+                    ctx.quadraticCurveTo(23, -22 - sq, 21, 14);
+                    ctx.quadraticCurveTo(0, 20, -21, 14);
+                    ctx.fill();
+                    drawEyes(-7, 7, -3, 3);
+                    ctx.strokeStyle = "#14532d"; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(0, 4, 5, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+                    break;
+                }
+                case 'frog': {
+                    ctx.fillStyle = m.color;
+                    ctx.beginPath(); ctx.ellipse(0, 4, 21, 15, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#c084fc";
+                    ctx.beginPath(); ctx.ellipse(0, 9, 13, 7, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = m.color;
+                    ctx.beginPath(); ctx.arc(-11, -10, 8, 0, Math.PI * 2); ctx.arc(11, -10, 8, 0, Math.PI * 2); ctx.fill();
+                    drawEyes(-11, 11, -10, 3);
+                    ctx.strokeStyle = "#3b0764"; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(0, 2, 9, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+                    ctx.fillStyle = "#6b21a8";
+                    ctx.beginPath(); ctx.arc(-6, -2, 2, 0, Math.PI * 2); ctx.arc(6, -2, 2, 0, Math.PI * 2); ctx.fill();
+                    break;
+                }
+                case 'ghost': {
+                    ctx.globalAlpha = 0.92;
+                    const gg = ctx.createLinearGradient(0, -22, 0, 22);
+                    gg.addColorStop(0, "#ffffff"); gg.addColorStop(1, "#94a3b8");
+                    ctx.fillStyle = gg;
+                    ctx.beginPath();
+                    ctx.arc(0, -4, 19, Math.PI, 0);
+                    ctx.lineTo(19, 20);
+                    for (let i = 0; i < 4; i++) {
+                        const wx = 19 - (i + 1) * 9.5;
+                        ctx.quadraticCurveTo(19 - i * 9.5 - 4.75, 14 + (i % 2 ? 6 : -2) + Math.sin(t * 2 + i) * 2, wx, 20);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = "#0f172a";
+                    ctx.beginPath(); ctx.ellipse(-7, -5, 3, 4.5, 0, 0, Math.PI * 2); ctx.ellipse(7, -5, 3, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(0, 6, 3.5, 5, 0, 0, Math.PI * 2); ctx.fill();
+                    break;
+                }
+                case 'bat': {
+                    const flap = Math.sin(t * 3) * 9;
+                    ctx.fillStyle = "#7c2d12";
+                    [-1, 1].forEach(s => {
+                        ctx.beginPath();
+                        ctx.moveTo(s * 6, 0);
+                        ctx.quadraticCurveTo(s * 28, -16 - flap, s * 36, 4 - flap * 0.3);
+                        ctx.quadraticCurveTo(s * 26, 2, s * 22, 10);
+                        ctx.quadraticCurveTo(s * 15, 3, s * 6, 10);
+                        ctx.closePath();
+                        ctx.fill();
+                    });
+                    ctx.fillStyle = m.color;
+                    ctx.beginPath(); ctx.ellipse(0, 2, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(-9, -8); ctx.lineTo(-6, -20); ctx.lineTo(-1, -9); ctx.closePath(); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(9, -8); ctx.lineTo(6, -20); ctx.lineTo(1, -9); ctx.closePath(); ctx.fill();
+                    ctx.fillStyle = "#fef2f2";
+                    ctx.beginPath(); ctx.arc(-4, -2, 3, 0, Math.PI * 2); ctx.arc(4, -2, 3, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#dc2626";
+                    ctx.beginPath(); ctx.arc(-4, -2, 1.5, 0, Math.PI * 2); ctx.arc(4, -2, 1.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#ffffff";
+                    ctx.beginPath(); ctx.moveTo(-3, 6); ctx.lineTo(-1.5, 10); ctx.lineTo(0, 6); ctx.moveTo(0, 6); ctx.lineTo(1.5, 10); ctx.lineTo(3, 6); ctx.fill();
+                    break;
+                }
+                default: { // mummy
+                    ctx.fillStyle = m.color;
+                    drawRoundedRect(-15, -21, 30, 42, 10); ctx.fill();
+                    ctx.strokeStyle = "#a16207"; ctx.lineWidth = 2;
+                    for (let i = -14; i <= 14; i += 7) {
+                        ctx.beginPath(); ctx.moveTo(-15, i + 4); ctx.lineTo(15, i - 2); ctx.stroke();
+                    }
+                    ctx.fillStyle = "#1c1917";
+                    drawRoundedRect(-12, -10, 24, 9, 3); ctx.fill();
+                    ctx.fillStyle = "#ffffff";
+                    ctx.beginPath(); ctx.arc(-5, -5.5, 3, 0, Math.PI * 2); ctx.arc(5, -5.5, 3, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#0f172a";
+                    ctx.beginPath(); ctx.arc(-5, -5.5, 1.4, 0, Math.PI * 2); ctx.arc(5, -5.5, 1.4, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+            ctx.restore();
+
+            ctx.fillStyle = "#fde047";
+            ctx.font = "bold 12px Fredoka, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("❓ KUIS", mx, my - 30);
+        }
+
+        function drawHazard(h) {
+            const cx = h.x + h.width / 2, cy = h.y + h.height / 2;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(h.facing || 1, 1);
+            if (h.type === 'croc') {
+                ctx.fillStyle = "#166534";
+                ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-40, -6 + Math.sin(Date.now() * 0.01) * 3); ctx.lineTo(-24, 8); ctx.closePath(); ctx.fill();
+                drawRoundedRect(-26, -10, 46, 22, 10); ctx.fill();
+                ctx.fillStyle = "#4ade80";
+                drawRoundedRect(-18, 2, 32, 8, 4); ctx.fill();
+                ctx.fillStyle = "#14532d";
+                [-16, -6, 4].forEach(px => { ctx.beginPath(); ctx.arc(px, -8, 3, 0, Math.PI * 2); ctx.fill(); });
+                ctx.fillStyle = "#166534";
+                drawRoundedRect(14, -6, 20, 13, 5); ctx.fill();
+                ctx.fillStyle = "#ffffff";
+                for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(18 + i * 5, 7); ctx.lineTo(20 + i * 5, 11); ctx.lineTo(22 + i * 5, 7); ctx.fill(); }
+                ctx.fillStyle = "#fde047";
+                ctx.beginPath(); ctx.arc(14, -9, 4, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#0f172a";
+                ctx.beginPath(); ctx.arc(15, -9, 1.8, 0, Math.PI * 2); ctx.fill();
+            } else {
+                ctx.strokeStyle = "#ea580c"; ctx.lineWidth = 5; ctx.lineCap = "round";
+                ctx.beginPath(); ctx.moveTo(-24, -2); ctx.quadraticCurveTo(-40, -16, -34, -24 + Math.sin(Date.now() * 0.01) * 3); ctx.stroke();
+                ctx.fillStyle = "#ea580c";
+                drawRoundedRect(-26, -12, 42, 24, 11); ctx.fill();
+                ctx.fillStyle = "#fed7aa";
+                drawRoundedRect(-16, 3, 26, 8, 4); ctx.fill();
+                ctx.strokeStyle = "#7c2d12"; ctx.lineWidth = 3;
+                [-18, -8, 2, 12].forEach(px => { ctx.beginPath(); ctx.moveTo(px, -12); ctx.lineTo(px + 2, -3); ctx.stroke(); });
+                ctx.fillStyle = "#ea580c";
+                ctx.beginPath(); ctx.arc(22, -4, 11, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(14, -12); ctx.lineTo(16, -21); ctx.lineTo(22, -14); ctx.moveTo(26, -14); ctx.lineTo(30, -21); ctx.lineTo(31, -10); ctx.fill();
+                ctx.fillStyle = "#fef08a";
+                ctx.beginPath(); ctx.arc(26, -6, 2.8, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#0f172a";
+                ctx.beginPath(); ctx.arc(26.5, -6, 1.4, 0, Math.PI * 2); ctx.arc(31, -1, 1.5, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 11px Fredoka, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(h.type === "croc" ? "🐊 BUAYA" : "🐯 MACAN", cx, cy - 26);
         }
 
         function render() {
@@ -1001,14 +1589,12 @@
             ctx.save();
             ctx.translate(-camX, -camY);
 
-            // Latar Belakang Peta 64-bit Bergradien
             const bgGrad = ctx.createLinearGradient(0, 0, MAP_WIDTH, MAP_HEIGHT);
             bgGrad.addColorStop(0, theme.bg1);
             bgGrad.addColorStop(1, theme.bg2);
             ctx.fillStyle = bgGrad;
             ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
-            // Grid Ubin Halus
             ctx.strokeStyle = "rgba(255,255,255,0.05)";
             ctx.lineWidth = 1;
             for (let gx = 0; gx < MAP_WIDTH; gx += 80) {
@@ -1018,7 +1604,6 @@
                 ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(MAP_WIDTH, gy); ctx.stroke();
             }
 
-            // Dekorasi Alam
             decorDots.forEach(d => {
                 ctx.fillStyle = d.kind === 0 ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.16)";
                 ctx.beginPath();
@@ -1026,104 +1611,34 @@
                 ctx.fill();
             });
 
-            // Batas Peta Emas
             ctx.strokeStyle = theme.accent;
             ctx.lineWidth = 8;
             ctx.strokeRect(20, 20, MAP_WIDTH - 40, MAP_HEIGHT - 40);
 
-            // Peti Harta Karun
             drawTreasureChest();
+            obstacles.forEach(drawObstacle);
+            monsters.forEach(m => { if (!m.defeated) drawMonster(m); });
+            hazards.forEach(drawHazard);
 
-            // Rintangan 64-bit
-            obstacles.forEach(obs => {
-                ctx.fillStyle = "rgba(0,0,0,0.35)";
-                drawRoundedRect(obs.x + 5, obs.y + 7, obs.width, obs.height, 12);
-                ctx.fill();
-
-                const oGrad = ctx.createLinearGradient(obs.x, obs.y, obs.x, obs.y + obs.height);
-                oGrad.addColorStop(0, "#64748b");
-                oGrad.addColorStop(1, "#1e293b");
-                ctx.fillStyle = oGrad;
-                drawRoundedRect(obs.x, obs.y, obs.width, obs.height, 12);
-                ctx.fill();
-                ctx.strokeStyle = "rgba(255,255,255,0.2)";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            });
-
-            // Monster Kuis
-            monsters.forEach(m => {
-                if (m.defeated) return;
-                const bounce = Math.sin(Date.now() * 0.006 + m.id) * 4;
-                const mx = m.x + m.width / 2;
-                const my = m.y + m.height / 2 + bounce;
-
-                ctx.fillStyle = "rgba(0,0,0,0.35)";
-                ctx.beginPath();
-                ctx.ellipse(mx, m.y + m.height + 2, 18, 6, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                const mGrad = ctx.createRadialGradient(mx - 5, my - 5, 3, mx, my, 21);
-                mGrad.addColorStop(0, "#ffffff");
-                mGrad.addColorStop(0.35, m.color);
-                mGrad.addColorStop(1, "#0f172a");
-                ctx.fillStyle = mGrad;
-                ctx.beginPath();
-                ctx.arc(mx, my, 19, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Mata Monster
-                ctx.fillStyle = "#0f172a";
-                ctx.beginPath();
-                ctx.arc(mx - 6, my - 2, 3, 0, Math.PI * 2);
-                ctx.arc(mx + 6, my - 2, 3, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Ikon Tanda Tanya Kuis
-                ctx.fillStyle = "#fde047";
-                ctx.font = "bold 12px Fredoka, sans-serif";
-                ctx.textAlign = "center";
-                ctx.fillText("❓ KUIS", mx, my - 24);
-            });
-
-            // Musuh Bahaya (Buaya / Macan)
-            hazards.forEach(h => {
-                const hx = h.x + h.width / 2;
-                const hy = h.y + h.height / 2;
-                ctx.fillStyle = h.type === "croc" ? "#15803d" : "#ea580c";
-                drawRoundedRect(h.x, h.y, h.width, h.height, 12);
-                ctx.fill();
-                ctx.strokeStyle = "#fef08a";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 11px Fredoka, sans-serif";
-                ctx.textAlign = "center";
-                ctx.fillText(h.type === "croc" ? "🐊 BUAYA" : "🐯 MACAN", hx, hy + 4);
-            });
-
-            // Pemain Lain (Multiplayer) dengan interpolasi halus
             Object.values(remotePlayers).forEach(rp => {
                 if (rp.mapIndex !== currentMapIndex) return;
                 if (typeof rp.displayX !== 'number') {
                     rp.displayX = rp.x;
                     rp.displayY = rp.y;
                 } else {
-                    rp.displayX += (rp.x - rp.displayX) * 0.28;
-                    rp.displayY += (rp.y - rp.displayY) * 0.28;
+                    rp.displayX += (rp.x - rp.displayX) * 0.2;
+                    rp.displayY += (rp.y - rp.displayY) * 0.2;
                 }
                 const isMoving = Math.hypot(rp.x - rp.displayX, rp.y - rp.displayY) > 1.2;
                 const walkAnim = isMoving ? (Date.now() * 0.015) : 0;
-                drawRPGCharacter(rp.displayX, rp.displayY, 34, 34, rp.color || "#a855f7", rp.name || "Teman", walkAnim, 0, 1, rp.jumpZ || 0, 0);
+                drawRPGCharacter(rp.displayX, rp.displayY, 34, 34, rp.color, rp.name, walkAnim, 0, 1, rp.jumpZ || 0, 0);
             });
 
-            // Karakter Utama
             drawRPGCharacter(player.x, player.y, player.width, player.height, player.color, player.name, player.walkCycle, player.dirX, player.dirY, player.jumpZ, player.invulnTimer);
 
             ctx.restore();
 
-            // Mini-map Pojok Kanan Bawah
+            // Mini-map
             const mmW = 150, mmH = 102;
             const mmX = canvas.width - mmW - 14;
             const mmY = canvas.height - mmH - 14;
@@ -1134,11 +1649,16 @@
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // Titik Peti pada Mini-map
+            if (currentMapIndex === 4) {
+                ctx.fillStyle = "rgba(34,211,238,0.35)";
+                obstacles.forEach(o => {
+                    ctx.fillRect(mmX + (o.x / MAP_WIDTH) * mmW, mmY + (o.y / MAP_HEIGHT) * mmH, Math.max(1, (o.width / MAP_WIDTH) * mmW), Math.max(1, (o.height / MAP_HEIGHT) * mmH));
+                });
+            }
+
             ctx.fillStyle = chest.unlocked ? "#fbbf24" : "#94a3b8";
             ctx.fillRect(mmX + ((chest.x + chest.width / 2) / MAP_WIDTH) * mmW - 3, mmY + ((chest.y + chest.height / 2) / MAP_HEIGHT) * mmH - 3, 6, 6);
 
-            // Titik Monster pada Mini-map
             ctx.fillStyle = "#22c55e";
             monsters.forEach(m => {
                 if (m.defeated) return;
@@ -1147,16 +1667,14 @@
                 ctx.fill();
             });
 
-            // Titik Rekan Pemain Multiplayer pada Mini-map
             Object.values(remotePlayers).forEach(rp => {
                 if (rp.mapIndex !== currentMapIndex) return;
-                ctx.fillStyle = rp.color || "#a855f7";
+                ctx.fillStyle = rp.color;
                 ctx.beginPath();
                 ctx.arc(mmX + (rp.x / MAP_WIDTH) * mmW, mmY + (rp.y / MAP_HEIGHT) * mmH, 3.2, 0, Math.PI * 2);
                 ctx.fill();
             });
 
-            // Titik Pemain Utama pada Mini-map
             ctx.fillStyle = "#38bdf8";
             ctx.beginPath();
             ctx.arc(mmX + (player.x / MAP_WIDTH) * mmW, mmY + (player.y / MAP_HEIGHT) * mmH, 3.8, 0, Math.PI * 2);
@@ -1172,15 +1690,36 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // --- MULTIPLAYER SINKRONISASI (HTTPS REST API) ---
+        // =====================================================================
+        // MULTIPLAYER (HTTPS REST: Realtime Database dulu, fallback Firestore)
+        // Perubahan: hemat kuota, tidak memaksa pindah peta, bersihkan data,
+        // validasi data pemain lain, tahan beda jam perangkat.
+        // =====================================================================
+        let mpActive = false;
+        let currentRoomCode = "PUBLIK";
+        let remotePlayers = {};
+        const currentUserId = "hero_" + Math.random().toString(36).substring(2, 10) + "_" + Date.now().toString(36);
+
         const FS_REST_BASE = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
         const FS_KEY_PARAM = `key=${encodeURIComponent(firebaseConfig.apiKey)}`;
         const RTDB_CANDIDATES = [
             `https://${firebaseConfig.projectId}-default-rtdb.asia-southeast1.firebasedatabase.app`,
             `https://${firebaseConfig.projectId}-default-rtdb.firebaseio.com`
         ];
-        let activeRtdbBase = null;
-        let pollIntervalId = null;
+        let backend = null;       // 'rtdb' | 'fs'
+        let rtdbBase = null;
+        let connectToken = 0;
+        let hbTimer = null;
+        let lastSyncTime = 0;
+        let lastSent = {};
+        let seenTrack = {};
+        let failNoticeShown = false;
+
+        function fetchT(url, opts = {}, ms = 7000) {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), ms);
+            return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+        }
 
         function toFsFields(obj) {
             const fields = {};
@@ -1205,220 +1744,239 @@
             return res;
         }
 
-        async function writePlayerState(safeRoom, payload) {
-            if (!activeRtdbBase) {
-                try {
-                    const res = await fetch(`${FS_REST_BASE}/room_${safeRoom}_players/${currentUserId}?${FS_KEY_PARAM}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(toFsFields(payload))
-                    });
-                    if (res.ok) return true;
-                } catch (e) {}
-
-                for (const base of RTDB_CANDIDATES) {
-                    try {
-                        const rtRes = await fetch(`${base}/rooms/${safeRoom}/players/${currentUserId}.json`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        if (rtRes.ok) {
-                            activeRtdbBase = base;
-                            return true;
-                        }
-                    } catch (e) {}
-                }
-                return false;
-            }
-
-            const rtRes = await fetch(`${activeRtdbBase}/rooms/${safeRoom}/players/${currentUserId}.json`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            return rtRes.ok;
+        function cleanRemote(p) {
+            if (!p || typeof p !== 'object') return null;
+            const x = Number(p.x), y = Number(p.y), li = Number(p.lastSeen);
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(li)) return null;
+            return {
+                name: sanitizeName(p.name) || 'Teman',
+                color: /^#[0-9a-fA-F]{6}$/.test(String(p.color)) ? String(p.color) : '#a855f7',
+                x: clamp(x, 0, MAP_WIDTH),
+                y: clamp(y, 0, MAP_HEIGHT),
+                jumpZ: clamp(Number(p.jumpZ) || 0, 0, 200),
+                mapIndex: clamp(Math.round(Number(p.mapIndex) || 0), 0, MAP_THEMES.length - 1),
+                score: Math.max(0, Number(p.score) || 0),
+                lastSeen: li
+            };
         }
 
-        async function connectMultiplayerRoom(roomCode) {
-            const dotEl = document.getElementById('hud-mp-dot');
-            const safeRoom = roomCode.replace(/[^A-Z0-9_-]/g, '') || 'PUBLIK';
-            currentRoomCode = safeRoom;
-
-            const roomUrl = `${FS_REST_BASE}/rooms/${safeRoom}?${FS_KEY_PARAM}`;
-            const playersColUrl = `${FS_REST_BASE}/room_${safeRoom}_players?pageSize=50&${FS_KEY_PARAM}`;
-
-            mpActive = true;
-            lastSyncTime = 0;
-            document.getElementById('hud-room-badge').classList.remove('hidden');
-            document.getElementById('hud-room-code').textContent = safeRoom;
-
-            try {
-                const initialPayload = {
-                    name: player.name,
-                    color: player.color,
-                    x: Math.round(player.x),
-                    y: Math.round(player.y),
-                    jumpZ: Math.round(player.jumpZ),
-                    mapIndex: currentMapIndex,
-                    score,
-                    lastSeen: Date.now()
-                };
-
-                const joined = await writePlayerState(safeRoom, initialPayload);
-                if (!joined) {
-                    throw new Error("Aktifkan Realtime Database (Test Mode) di Firebase Console terlebih dahulu!");
-                }
-
-                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
-
-                let isPolling = false;
-                let pollTick = 0;
-                const pollNow = async () => {
-                    if (!mpActive || isPolling) return;
-                    isPolling = true;
-                    pollTick++;
-                    try {
-                        const now = Date.now();
-                        const nextRemotes = {};
-                        let count = 1;
-
-                        if (!activeRtdbBase) {
-                            const pResp = await fetch(playersColUrl);
-                            if (pResp.ok) {
-                                const listData = await pResp.json();
-                                (listData.documents || []).forEach(docItem => {
-                                    const docId = docItem.name.split('/').pop();
-                                    if (docId === currentUserId) return;
-                                    const pData = fromFsFields(docItem);
-                                    if (now - (pData.lastSeen || 0) < 20000) {
-                                        const prev = remotePlayers[docId];
-                                        pData.displayX = prev && typeof prev.displayX === 'number' ? prev.displayX : pData.x;
-                                        pData.displayY = prev && typeof prev.displayY === 'number' ? prev.displayY : pData.y;
-                                        nextRemotes[docId] = pData;
-                                        count++;
-                                    }
-                                });
-                            }
-                        } else {
-                            const pResp = await fetch(`${activeRtdbBase}/rooms/${safeRoom}/players.json`);
-                            if (pResp.ok) {
-                                const allPlayers = (await pResp.json()) || {};
-                                Object.entries(allPlayers).forEach(([docId, pData]) => {
-                                    if (docId === currentUserId || !pData) return;
-                                    if (now - (pData.lastSeen || 0) < 20000) {
-                                        const prev = remotePlayers[docId];
-                                        pData.displayX = prev && typeof prev.displayX === 'number' ? prev.displayX : pData.x;
-                                        pData.displayY = prev && typeof prev.displayY === 'number' ? prev.displayY : pData.y;
-                                        nextRemotes[docId] = pData;
-                                        count++;
-                                    }
-                                });
-                            }
-                        }
-
-                        remotePlayers = nextRemotes;
-                        document.getElementById('hud-online-count').textContent = count;
-                        if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
-
-                        if (pollTick % 4 === 0) {
-                            if (!activeRtdbBase) {
-                                const rResp = await fetch(roomUrl);
-                                if (rResp.ok) {
-                                    const d = fromFsFields(await rResp.json());
-                                    if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
-                                        showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
-                                        buildMap(d.mapIndex);
-                                    }
-                                }
-                            } else {
-                                const rResp = await fetch(`${activeRtdbBase}/rooms/${safeRoom}/meta.json`);
-                                if (rResp.ok) {
-                                    const d = (await rResp.json()) || {};
-                                    if (typeof d.mapIndex === 'number' && d.mapIndex > currentMapIndex && d.mapIndex < MAP_THEMES.length) {
-                                        showBanner(`Rekan tim membuka Peti! Berpindah ke ${MAP_THEMES[d.mapIndex].title}!`, true);
-                                        buildMap(d.mapIndex);
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e) {} finally {
-                        isPolling = false;
-                    }
-                };
-
-                await pollNow();
-                if (pollIntervalId) clearInterval(pollIntervalId);
-                pollIntervalId = setInterval(pollNow, 250);
-            } catch (err) {
-                console.warn("Gagal sambung mabar:", err);
-                mpActive = false;
-                if (dotEl) dotEl.className = "w-2 h-2 rounded-full bg-rose-500 animate-pulse";
-                showBanner(err.message);
-                setTimeout(() => connectMultiplayerRoom(safeRoom), 4000);
-            }
-        }
-
-        function syncMultiplayerPosition(force = false) {
-            if (!mpActive) return;
-            const now = Date.now();
-            if (!force && now - lastSyncTime < 180) return;
-            lastSyncTime = now;
-            writePlayerState(currentRoomCode, {
+        function buildPayload(now = Date.now()) {
+            return {
                 name: player.name,
                 color: player.color,
                 x: Math.round(player.x),
                 y: Math.round(player.y),
                 jumpZ: Math.round(player.jumpZ),
                 mapIndex: currentMapIndex,
-                score,
+                score: Math.round(score),
                 lastSeen: now
-            }).catch(() => {});
+            };
         }
 
-        function syncMultiplayerProgress() {
-            syncMultiplayerPosition(true);
+        function playerUrl(room, id) {
+            return backend === 'rtdb'
+                ? `${rtdbBase}/rooms/${room}/players/${id}.json`
+                : `${FS_REST_BASE}/room_${room}_players/${id}?${FS_KEY_PARAM}`;
         }
 
-        function syncMultiplayerMapChange(nextIdx) {
-            if (!mpActive) return;
-            if (!activeRtdbBase) {
-                const roomUrl = `${FS_REST_BASE}/rooms/${currentRoomCode}?${FS_KEY_PARAM}`;
-                fetch(roomUrl, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(toFsFields({ mapIndex: nextIdx, updatedAt: Date.now() }))
-                }).catch(() => {});
-            } else {
-                fetch(`${activeRtdbBase}/rooms/${currentRoomCode}/meta.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mapIndex: nextIdx, updatedAt: Date.now() })
-                }).catch(() => {});
+        async function sendState(room, payload) {
+            if (backend === 'rtdb') {
+                const r = await fetchT(playerUrl(room, currentUserId), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                return r.ok;
             }
+            if (backend === 'fs') {
+                const r = await fetchT(playerUrl(room, currentUserId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toFsFields(payload)) });
+                return r.ok;
+            }
+            return false;
         }
 
-        // --- KONTROL KEYBOARD & SENTUH ---
+        async function detectBackend(room, payload) {
+            for (const base of RTDB_CANDIDATES) {
+                try {
+                    const r = await fetchT(`${base}/rooms/${room}/players/${currentUserId}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (r.ok) { backend = 'rtdb'; rtdbBase = base; return true; }
+                } catch (e) {}
+            }
+            try {
+                const r = await fetchT(`${FS_REST_BASE}/room_${room}_players/${currentUserId}?${FS_KEY_PARAM}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toFsFields(payload)) });
+                if (r.ok) { backend = 'fs'; return true; }
+            } catch (e) {}
+            return false;
+        }
+
+        function deleteRemoteDoc(room, id) {
+            const url = playerUrl(room, id);
+            fetchT(url, { method: 'DELETE' }).catch(() => {});
+        }
+
+        async function pollOnce(room) {
+            const now = Date.now();
+            const incoming = {};
+
+            if (backend === 'rtdb') {
+                const r = await fetchT(`${rtdbBase}/rooms/${room}/players.json`);
+                if (!r.ok) return false;
+                const all = (await r.json()) || {};
+                for (const [id, d] of Object.entries(all)) incoming[id] = d;
+            } else {
+                const r = await fetchT(`${FS_REST_BASE}/room_${room}_players?pageSize=100&${FS_KEY_PARAM}`);
+                if (!r.ok) return false;
+                const j = await r.json();
+                for (const doc of (j.documents || [])) incoming[doc.name.split('/').pop()] = fromFsFields(doc);
+            }
+
+            const next = {};
+            let count = 1;
+            let cleaned = 0;
+            for (const [id, raw] of Object.entries(incoming)) {
+                if (id === currentUserId) continue;
+                const d = cleanRemote(raw);
+                if (!d) continue;
+
+                // Deteksi "masih hidup" lewat perubahan lastSeen (tahan beda jam perangkat)
+                let tr = seenTrack[id];
+                if (!tr) {
+                    tr = { lastSeen: d.lastSeen, seenAt: now, confirmed: Math.abs(now - d.lastSeen) < 30000 };
+                    seenTrack[id] = tr;
+                } else if (tr.lastSeen !== d.lastSeen) {
+                    tr.lastSeen = d.lastSeen;
+                    tr.seenAt = now;
+                    tr.confirmed = true;
+                }
+                const alive = tr.confirmed && (now - tr.seenAt) < 15000;
+                if (!alive) {
+                    // Hapus data basi (>5 menit) agar room tidak menumpuk sampah
+                    if (now - d.lastSeen > 300000 && cleaned < 2) { cleaned++; deleteRemoteDoc(room, id); }
+                    continue;
+                }
+                const prev = remotePlayers[id];
+                d.displayX = prev && typeof prev.displayX === 'number' ? prev.displayX : d.x;
+                d.displayY = prev && typeof prev.displayY === 'number' ? prev.displayY : d.y;
+                next[id] = d;
+                count++;
+            }
+            for (const id of Object.keys(seenTrack)) if (!(id in incoming)) delete seenTrack[id];
+
+            remotePlayers = next;
+            $('hud-online-count').textContent = count;
+            return true;
+        }
+
+        function stopMultiplayerTimers() {
+            if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+        }
+
+        function setDot(cls) {
+            const dot = $('hud-mp-dot');
+            if (dot) dot.className = `w-2 h-2 rounded-full ${cls}`;
+        }
+
+        async function connectMultiplayer(room) {
+            const token = ++connectToken;
+            stopMultiplayerTimers();
+            mpActive = true;
+            remotePlayers = {};
+            seenTrack = {};
+            lastSent = {};
+            $('hud-room-badge').classList.remove('hidden');
+            $('hud-room-code').textContent = room;
+            setDot('bg-amber-400 animate-pulse');
+
+            const payload = buildPayload();
+            let ok = false;
+            try {
+                ok = backend ? await sendState(room, payload) : await detectBackend(room, payload);
+            } catch (e) { ok = false; }
+            if (token !== connectToken) return;
+
+            if (!ok) {
+                setDot('bg-rose-500 animate-pulse');
+                if (!failNoticeShown) {
+                    failNoticeShown = true;
+                    showBanner("Multiplayer belum tersambung. Pastikan Realtime Database/Firestore aktif. Mencoba lagi...", false, 4000);
+                }
+                setTimeout(() => { if (token === connectToken && mpActive) connectMultiplayer(room); }, 5000);
+                return;
+            }
+
+            failNoticeShown = false;
+            lastSyncTime = Date.now();
+            setDot('bg-emerald-400');
+
+            // Heartbeat (tetap jalan walau tab di latar belakang)
+            hbTimer = setInterval(() => writeState(), 1500);
+
+            // Loop polling (tanpa tumpang tindih)
+            (async () => {
+                let fails = 0;
+                while (mpActive && token === connectToken) {
+                    let good = true;
+                    if (!document.hidden) {
+                        try { good = await pollOnce(room); } catch (e) { good = false; }
+                    }
+                    if (good) { fails = 0; setDot('bg-emerald-400'); }
+                    else { fails++; if (fails >= 3) setDot('bg-rose-500 animate-pulse'); }
+                    await sleep(backend === 'rtdb' ? 800 : 2500);
+                }
+            })();
+        }
+
+        function writeState(force = false) {
+            if (!mpActive || !backend) return;
+            const now = Date.now();
+            const x = Math.round(player.x), y = Math.round(player.y), jz = Math.round(player.jumpZ);
+            const changed = x !== lastSent.x || y !== lastSent.y || jz !== lastSent.jz || currentMapIndex !== lastSent.map || Math.round(score) !== lastSent.score;
+            const minGap = backend === 'rtdb' ? 350 : 1000;
+            const idleGap = backend === 'rtdb' ? 3000 : 6000;
+            if (!force) {
+                if (changed && now - lastSyncTime < minGap) return;
+                if (!changed && now - lastSyncTime < idleGap) return;
+            }
+            lastSyncTime = now;
+            lastSent = { x, y, jz, map: currentMapIndex, score: Math.round(score) };
+            sendState(currentRoomCode, buildPayload(now)).catch(() => {});
+        }
+
+        function leaveRoom() {
+            if (!mpActive || !backend) return;
+            try { fetch(playerUrl(currentRoomCode, currentUserId), { method: 'DELETE', keepalive: true }); } catch (e) {}
+        }
+        window.addEventListener('pagehide', leaveRoom);
+
+        // =====================================================================
+        // KONTROL KEYBOARD & SENTUH
+        // =====================================================================
+        function isTypingTarget(t) {
+            return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA');
+        }
         window.addEventListener('keydown', (e) => {
+            if (isTypingTarget(e.target)) return;
             if (typeof e.key === 'string') {
                 keys[e.key] = true;
                 if (e.code === 'Space' || e.key === ' ') {
-                    if (gameRunning && activeQuizMonsterIndex === -1) e.preventDefault();
+                    if (gameRunning) e.preventDefault();
                     triggerJump();
                 }
+                if (gameRunning && e.key.startsWith('Arrow')) e.preventDefault();
             }
         });
         window.addEventListener('keyup', (e) => {
-            if (typeof e.key === 'string') keys[e.key] = false;
+            if (typeof e.key === 'string') {
+                keys[e.key] = false;
+                if ((e.code === 'Space' || e.key === ' ') && gameRunning && !isTypingTarget(e.target)) e.preventDefault();
+            }
         });
+        window.addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); });
 
         function bindTouchBtn(id, keyName) {
-            const btn = document.getElementById(id);
+            const btn = $(id);
             if (!btn) return;
             const press = (e) => { e.preventDefault(); keys[keyName] = true; };
             const release = (e) => { e.preventDefault(); keys[keyName] = false; };
             btn.addEventListener('touchstart', press, { passive: false });
             btn.addEventListener('touchend', release, { passive: false });
+            btn.addEventListener('touchcancel', release, { passive: false });
             btn.addEventListener('mousedown', press);
             btn.addEventListener('mouseup', release);
             btn.addEventListener('mouseleave', release);
@@ -1428,41 +1986,69 @@
         bindTouchBtn('btn-left', 'ArrowLeft');
         bindTouchBtn('btn-right', 'ArrowRight');
 
-        const jumpBtn = document.getElementById('btn-jump');
+        const jumpBtn = $('btn-jump');
         if (jumpBtn) {
             jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); }, { passive: false });
             jumpBtn.addEventListener('click', triggerJump);
         }
 
-        // --- TOMBOL UI ---
-        document.getElementById('btn-gen-room').addEventListener('click', () => {
-            const code = 'KELAS' + Math.floor(10 + Math.random() * 89);
-            document.getElementById('room-code-input').value = code;
+        // =====================================================================
+        // TOMBOL UI
+        // =====================================================================
+        function setRoomHint(text, cls) {
+            const el = $('room-hint');
+            el.textContent = text;
+            el.className = `text-[10px] mt-1 ${cls}`;
+        }
+
+        $('btn-gen-room').addEventListener('click', () => {
+            $('room-code-input').value = genRoomCode();
+            setRoomHint('Kode privat dibuat. Bagikan kode ini ke teman sekelas agar bisa bermain bersama.', 'text-emerald-300');
+        });
+        $('btn-solo-room').addEventListener('click', () => {
+            $('room-code-input').value = 'SOLO';
+            setRoomHint('Mode main sendiri: tidak terhubung ke pemain lain.', 'text-slate-300');
+        });
+        $('btn-public-room').addEventListener('click', () => {
+            $('room-code-input').value = 'PUBLIK';
+            setRoomHint('Lobi publik: pemain lain yang tidak kamu kenal bisa melihat nama panggilanmu. Jangan pakai nama lengkap!', 'text-amber-300');
         });
 
-        document.getElementById('btn-sound').addEventListener('click', () => {
+        $('btn-sound').addEventListener('click', (e) => {
             soundEnabled = !soundEnabled;
-            document.getElementById('icon-sound').className = soundEnabled ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark";
-            document.getElementById('label-sound').textContent = soundEnabled ? "Suara ON" : "Suara OFF";
+            $('icon-sound').className = soundEnabled ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark";
+            $('label-sound').textContent = soundEnabled ? "Suara ON" : "Suara OFF";
+            e.currentTarget.blur();
         });
 
-        async function startGame() {
+        $('hud-room-badge').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(currentRoomCode);
+                showBanner(`Kode room "${currentRoomCode}" disalin!`, true, 1800);
+            } catch (e) {
+                showBanner(`Kode room: ${currentRoomCode}`, true, 2500);
+            }
+        });
+
+        async function startGame(useSaved = false) {
             ensureAudio();
-            const rawName = document.getElementById('player-name-input').value.trim();
-            player.name = rawName || `Ksatria_${Math.floor(100 + Math.random() * 899)}`;
+            const saved = useSaved ? loadProgress() : null;
+            const rawName = sanitizeName($('player-name-input').value);
+            player.name = rawName || (saved && saved.name) || `Ksatria_${Math.floor(100 + Math.random() * 899)}`;
             player.color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
-            const rawRoom = document.getElementById('room-code-input').value.trim().toUpperCase();
-            currentRoomCode = rawRoom || "PUBLIK";
+            let room = sanitizeRoom($('room-code-input').value);
+            const autoCreated = !room;
+            if (!room) room = genRoomCode();
+            currentRoomCode = room;
 
-            score = 0;
-            document.getElementById('overlay-start').classList.add('hidden');
-            document.getElementById('overlay-victory').classList.add('hidden');
-            document.getElementById('hud-room-badge').classList.remove('hidden');
-            document.getElementById('hud-room-code').textContent = currentRoomCode;
+            score = saved ? saved.score : 0;
+            $('overlay-start').classList.add('hidden');
+            $('overlay-victory').classList.add('hidden');
 
             resizeCanvas();
-            buildMap(0);
+            buildMap(saved ? saved.mapIndex : 0);
+            saveProgress();
             gameRunning = true;
             lastFrameTime = performance.now();
             if (!loopStarted) {
@@ -1470,23 +2056,50 @@
                 requestAnimationFrame(gameLoop);
             }
 
-            // Hubungkan Firebase di latar belakang tanpa menahan render
-            initFirebaseMP().then(() => connectMultiplayerRoom(currentRoomCode));
+            if (room === 'SOLO') {
+                mpActive = false;
+                $('hud-room-badge').classList.remove('hidden');
+                $('hud-room-code').textContent = 'SOLO';
+                $('hud-online-count').textContent = '1';
+                setDot('bg-slate-400');
+            } else {
+                if (autoCreated) showBanner(`Kode room kelasmu: ${room}. Klik lencana kode di atas untuk menyalin dan bagikan ke teman!`, true, 5000);
+                connectMultiplayer(room);
+            }
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
         }
 
-        document.getElementById('btn-start').addEventListener('click', startGame);
-        document.getElementById('btn-restart').addEventListener('click', () => {
+        $('btn-start').addEventListener('click', () => startGame(false));
+        $('btn-continue').addEventListener('click', () => startGame(true));
+        $('btn-restart').addEventListener('click', (e) => {
+            e.currentTarget.blur();
+            if (!gameRunning) return;
+            if (!confirm('Ulangi petualangan dari Map 1? Skor akan kembali ke 0.')) return;
             score = 0;
             buildMap(0);
+            saveProgress();
+            writeState(true);
         });
-        document.getElementById('btn-play-again').addEventListener('click', () => {
+        $('btn-play-again').addEventListener('click', () => {
             score = 0;
-            document.getElementById('overlay-victory').classList.add('hidden');
+            $('overlay-victory').classList.add('hidden');
             gameRunning = true;
             buildMap(0);
+            saveProgress();
+            writeState(true);
         });
 
-        window.onload = resizeCanvas;
+        // Tombol "Lanjutkan" jika ada progres tersimpan
+        (function initContinue() {
+            const saved = loadProgress();
+            if (saved && (saved.mapIndex > 0 || saved.score > 0)) {
+                $('btn-continue').classList.remove('hidden');
+                $('label-continue').textContent = `LANJUTKAN (Map ${saved.mapIndex + 1} • Skor ${saved.score})`;
+                if (saved.name) $('player-name-input').value = saved.name;
+            }
+        })();
+
+        resizeCanvas();
     </script>
 </body>
 </html>

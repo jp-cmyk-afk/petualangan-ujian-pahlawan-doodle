@@ -1,0 +1,67 @@
+ATURAN KEAMANAN FIREBASE (template, tes dulu di Rules Playground sebelum Publish)
+=====================================================================
+
+Game memakai Realtime Database terlebih dahulu. Jika tidak aktif, otomatis
+memakai Firestore. Cukup pasang aturan untuk yang kamu aktifkan.
+
+---------------------------------------------------------------------
+A) REALTIME DATABASE  (Firebase Console > Realtime Database > Rules)
+---------------------------------------------------------------------
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$room": {
+        ".validate": "$room.matches(/^[A-Z0-9_-]{3,10}$/)",
+        "players": {
+          ".read": true,
+          "$uid": {
+            ".write": "$uid.matches(/^hero_[a-z0-9_]{6,40}$/)",
+            ".validate": "newData.hasChildren(['name','x','y','mapIndex','lastSeen'])",
+            "name":     { ".validate": "newData.isString() && newData.val().length <= 14" },
+            "color":    { ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)" },
+            "x":        { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2200" },
+            "y":        { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1500" },
+            "jumpZ":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "mapIndex": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4" },
+            "score":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+            "lastSeen": { ".validate": "newData.isNumber()" },
+            "$other":   { ".validate": false }
+          }
+        }
+      }
+    }
+  }
+}
+
+---------------------------------------------------------------------
+B) FIRESTORE  (Firebase Console > Firestore Database > Rules)
+---------------------------------------------------------------------
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{col}/{docId} {
+      allow read, delete: if col.matches('room_[A-Z0-9_-]{3,10}_players');
+      allow create, update: if col.matches('room_[A-Z0-9_-]{3,10}_players')
+        && docId.matches('hero_[a-z0-9_]{6,40}')
+        && request.resource.data.keys().hasOnly(['name','color','x','y','jumpZ','mapIndex','score','lastSeen'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 14
+        && request.resource.data.x is int && request.resource.data.x >= 0 && request.resource.data.x <= 2200
+        && request.resource.data.y is int && request.resource.data.y >= 0 && request.resource.data.y <= 1500
+        && request.resource.data.mapIndex is int && request.resource.data.mapIndex >= 0 && request.resource.data.mapIndex <= 4;
+    }
+  }
+}
+
+---------------------------------------------------------------------
+C) LANGKAH TAMBAHAN (wajib, dikerjakan di Google Cloud Console)
+---------------------------------------------------------------------
+1. Google Cloud Console > APIs & Services > Credentials > pilih API key
+   "AIzaSy...". Pada "Application restrictions" pilih "Websites" lalu isi
+   domain tempat game ini di-hosting (mis. https://namakamu.github.io/*).
+   API key Firebase memang terlihat di kode web, jadi pembatasan domain +
+   aturan di atas yang melindunginya.
+2. Pantau penggunaan di Firebase Console > Usage agar tidak melewati kuota.
+3. Kode room bertindak seperti kata sandi: siapa pun yang tahu kodenya bisa
+   masuk. Gunakan kode panjang (otomatis 7 karakter) untuk kelas.
