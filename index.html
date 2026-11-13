@@ -865,12 +865,28 @@
             updateHUD();
         }
 
+        // Pilih titik kosong yang paling jauh dari monster lain (supaya tersebar merata)
+        function findSpreadSpot(w, h, ignore = null) {
+            let best = null, bestScore = -1;
+            for (let i = 0; i < 30; i++) {
+                const c = findFreeSpot(w, h, 240);
+                let score = Infinity;
+                for (const o of monsters) {
+                    if (o === ignore || o.defeated) continue;
+                    score = Math.min(score, Math.hypot(c.x - o.x, c.y - o.y));
+                }
+                if (score > bestScore) { bestScore = score; best = c; }
+            }
+            return best;
+        }
+
         function spawnSingleMonster(id) {
             const theme = MAP_THEMES[currentMapIndex];
-            const p = findFreeSpot(40, 40, 240);
+            const p = findSpreadSpot(40, 40);
             monsters.push({
                 id,
                 x: p.x, y: p.y,
+                home: { x: p.x, y: p.y },
                 width: 40, height: 40,
                 vx: (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.65),
                 vy: (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.65),
@@ -934,9 +950,10 @@
             const monster = monsters[idx];
             if (idx === -1 || !monster) return;
             monster.question = getQuestion();
-            const p = findFreeSpot(monster.width, monster.height, 260);
+            const p = findSpreadSpot(monster.width, monster.height, monster);
             monster.x = p.x;
             monster.y = p.y;
+            monster.home = { x: p.x, y: p.y };
             closeQuiz(90);
         }
 
@@ -1050,6 +1067,7 @@
             if (hitsObstacle(m.x, m.y, m.width, m.height)) {
                 const p = findFreeSpot(m.width, m.height, 0);
                 m.x = p.x; m.y = p.y;
+                m.home = { x: p.x, y: p.y };
             }
 
             wander(m, dt);
@@ -1064,6 +1082,17 @@
                     const f = (110 - d) / 110;
                     if (d < 0.001) { sx += Math.random() - 0.5; sy += Math.random() - 0.5; }
                     else { sx += (ddx / d) * f; sy += (ddy / d) * f; }
+                }
+            }
+            // Tiap monster berpatroli di sekitar wilayahnya sendiri (tidak bisa berkumpul di satu tempat)
+            if (m.home) {
+                const R = mazeMap ? 200 : 300;
+                const hx = m.home.x - m.x, hy = m.home.y - m.y;
+                const hd = Math.hypot(hx, hy);
+                if (hd > R) {
+                    const w = Math.min(1.6, 0.4 + (hd - R) / 120);
+                    sx += (hx / hd) * w;
+                    sy += (hy / hd) * w;
                 }
             }
             const edge = 130;
@@ -1094,8 +1123,9 @@
                 m.vx = Math.cos(a) * m.speed;
                 m.vy = Math.sin(a) * m.speed;
                 if (Math.random() < 0.5) {
-                    const p = findFreeSpot(m.width, m.height, 200);
+                    const p = findSpreadSpot(m.width, m.height, m);
                     m.x = p.x; m.y = p.y;
+                    m.home = { x: p.x, y: p.y };
                 }
             }
         }
@@ -1716,6 +1746,18 @@
 
             ctx.restore();
 
+            // Labirin gelap: hanya area kecil di sekitar pemain yang terlihat
+            if (currentMapIndex === 4) {
+                const fx = player.x + player.width / 2 - camX;
+                const fy = player.y + player.height / 2 - camY;
+                const fog = ctx.createRadialGradient(fx, fy, 70, fx, fy, 230);
+                fog.addColorStop(0, "rgba(2,6,23,0)");
+                fog.addColorStop(0.55, "rgba(2,6,23,0.72)");
+                fog.addColorStop(1, "rgba(2,6,23,0.97)");
+                ctx.fillStyle = fog;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
             // Mini-map
             const mmW = 150, mmH = 102;
             const mmX = canvas.width - mmW - 14;
@@ -1727,19 +1769,15 @@
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            if (currentMapIndex === 4) {
-                ctx.fillStyle = "rgba(34,211,238,0.35)";
-                obstacles.forEach(o => {
-                    ctx.fillRect(mmX + (o.x / MAP_WIDTH) * mmW, mmY + (o.y / MAP_HEIGHT) * mmH, Math.max(1, (o.width / MAP_WIDTH) * mmW), Math.max(1, (o.height / MAP_HEIGHT) * mmH));
-                });
-            }
+            // Di labirin gelap, mini-map tidak membocorkan dinding, peti, dan monster
+            const darkMaze = currentMapIndex === 4;
 
             ctx.fillStyle = chest.unlocked ? "#fbbf24" : "#94a3b8";
-            ctx.fillRect(mmX + ((chest.x + chest.width / 2) / MAP_WIDTH) * mmW - 3, mmY + ((chest.y + chest.height / 2) / MAP_HEIGHT) * mmH - 3, 6, 6);
+            if (!darkMaze) ctx.fillRect(mmX + ((chest.x + chest.width / 2) / MAP_WIDTH) * mmW - 3, mmY + ((chest.y + chest.height / 2) / MAP_HEIGHT) * mmH - 3, 6, 6);
 
             ctx.fillStyle = "#22c55e";
             monsters.forEach(m => {
-                if (m.defeated) return;
+                if (m.defeated || darkMaze) return;
                 ctx.beginPath();
                 ctx.arc(mmX + (m.x / MAP_WIDTH) * mmW, mmY + (m.y / MAP_HEIGHT) * mmH, 2.5, 0, Math.PI * 2);
                 ctx.fill();
