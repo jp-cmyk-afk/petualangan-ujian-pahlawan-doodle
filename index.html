@@ -526,7 +526,7 @@
                 id: 3, title: "Map 3: Pemakaman Angker (Hantu Makam)",
                 bg1: "#1e293b", bg2: "#0f172a", accent: "#94a3b8",
                 monsterName: "Hantu Makam", monsterColor: "#e2e8f0", monsterType: "ghost",
-                hazardType: "croc", hazardHint: "Waspada penjaga makam yang berpatroli cepat!", obstacle: "tomb"
+                hazardType: "fireball", hazardHint: "Awas Bola Api! Loncat (SPACE) menghindarinya!", obstacle: "tomb"
             },
             {
                 id: 4, title: "Map 4: Hutan Lebat (Kelelawar & Macan)",
@@ -538,7 +538,7 @@
                 id: 5, title: "Map 5: Labirin Gelap (Mumi & Penjaga)",
                 bg1: "#083344", bg2: "#042f2e", accent: "#22d3ee",
                 monsterName: "Mumi Labirin", monsterColor: "#fde047", monsterType: "mummy",
-                hazardType: "tiger", hazardHint: "Peta Terakhir! Cari jalan keluar labirin ke Peti Harta di atas!", obstacle: "wall"
+                hazardType: "skeleton", hazardHint: "Peta Terakhir! Awas Tengkorak Pedang! Cari jalan keluar ke Peti Harta di atas!", obstacle: "wall"
             }
         ];
 
@@ -1160,7 +1160,7 @@
                         writeState(true);
                         return true;
                     }
-                    showBanner(`Aduh! Terkena ${h.type === 'croc' ? 'Buaya Rawa' : 'Macan Hutan'}! Nyawa tersisa ${lives}.`);
+                    showBanner(`Aduh! Terkena ${({ croc: 'Buaya Rawa', fireball: 'Bola Api', skeleton: 'Tengkorak Pedang' })[h.type] || 'Macan Hutan'}! Nyawa tersisa ${lives}.`);
                     player.x = spawn.x;
                     player.y = spawn.y;
                     player.invulnTimer = 140;
@@ -1648,7 +1648,66 @@
             ctx.save();
             ctx.translate(cx, cy);
             ctx.scale(h.facing || 1, 1);
-            if (h.type === 'croc') {
+            if (h.type === 'fireball') {
+                const tm = Date.now() * 0.02;
+                // ekor api
+                for (let i = 0; i < 5; i++) {
+                    const fl = Math.sin(tm + i * 1.7) * 3;
+                    const r = 14 - i * 2;
+                    const a = 0.75 - i * 0.13;
+                    ctx.fillStyle = i < 2 ? `rgba(249,115,22,${a})` : `rgba(220,38,38,${a})`;
+                    ctx.beginPath(); ctx.arc(-10 - i * 8, fl, Math.max(3, r), 0, Math.PI * 2); ctx.fill();
+                }
+                // lidah api atas
+                ctx.fillStyle = "rgba(251,146,60,0.9)";
+                ctx.beginPath();
+                ctx.moveTo(-6, -12); ctx.quadraticCurveTo(-2 + Math.sin(tm) * 3, -26, 6, -14 + Math.sin(tm * 1.3) * 2);
+                ctx.quadraticCurveTo(10, -22 + Math.cos(tm) * 2, 14, -10); ctx.closePath(); ctx.fill();
+                // inti bola api
+                const fg = ctx.createRadialGradient(4, -2, 2, 4, 0, 18);
+                fg.addColorStop(0, "#ffffff"); fg.addColorStop(0.3, "#fde047"); fg.addColorStop(0.7, "#f97316"); fg.addColorStop(1, "#b91c1c");
+                ctx.fillStyle = fg;
+                ctx.beginPath(); ctx.arc(4, 0, 17, 0, Math.PI * 2); ctx.fill();
+                // mata marah
+                ctx.fillStyle = "#7f1d1d";
+                ctx.beginPath(); ctx.moveTo(4, -4); ctx.lineTo(12, -8); ctx.lineTo(12, -2); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.arc(10, -3, 1.6, 0, Math.PI * 2); ctx.fill();
+            } else if (h.type === 'skeleton') {
+                const wk = Math.sin(Date.now() * 0.014);
+                // kaki
+                ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 3; ctx.lineCap = "round";
+                ctx.beginPath(); ctx.moveTo(-3, 8); ctx.lineTo(-6 + wk * 6, 22); ctx.moveTo(3, 8); ctx.lineTo(6 - wk * 6, 22); ctx.stroke();
+                // tulang rusuk
+                ctx.lineWidth = 2.5;
+                ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 9); ctx.stroke();
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-8, -2 + i * 4); ctx.lineTo(8, -2 + i * 4); ctx.stroke(); }
+                // lengan belakang
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(-6, -2); ctx.lineTo(-13, 4 + wk * 2); ctx.stroke();
+                // pedang di tangan depan
+                ctx.beginPath(); ctx.moveTo(6, -2); ctx.lineTo(16, 3); ctx.stroke();
+                ctx.save();
+                ctx.translate(16, 3);
+                ctx.rotate(-0.9 + wk * 0.12);
+                ctx.fillStyle = "#94a3b8";
+                ctx.beginPath(); ctx.moveTo(0, -2.5); ctx.lineTo(30, -1); ctx.lineTo(34, 0); ctx.lineTo(30, 1); ctx.lineTo(0, 2.5); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = "#f1f5f9"; ctx.fillRect(2, -0.8, 26, 1.6);
+                ctx.fillStyle = "#b45309"; ctx.fillRect(-4, -4, 4, 8);
+                ctx.fillStyle = "#78350f"; ctx.fillRect(-9, -1.8, 6, 3.6);
+                ctx.restore();
+                // tengkorak
+                ctx.fillStyle = "#f8fafc";
+                ctx.beginPath(); ctx.arc(0, -13, 10, 0, Math.PI * 2); ctx.fill();
+                drawRoundedRect(-6, -8, 12, 7, 2); ctx.fill();
+                ctx.fillStyle = "#0f172a";
+                ctx.beginPath(); ctx.arc(-4, -14, 3, 0, Math.PI * 2); ctx.arc(4, -14, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(-1.5, -8.5); ctx.lineTo(1.5, -8.5); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath(); ctx.arc(-4, -14, 1.1, 0, Math.PI * 2); ctx.arc(4, -14, 1.1, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 1;
+                ctx.beginPath(); for (let i = -4; i <= 4; i += 2) { ctx.moveTo(i, -5); ctx.lineTo(i, -2.5); } ctx.stroke();
+            } else if (h.type === 'croc') {
                 ctx.fillStyle = "#166534";
                 ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-40, -6 + Math.sin(Date.now() * 0.01) * 3); ctx.lineTo(-24, 8); ctx.closePath(); ctx.fill();
                 drawRoundedRect(-26, -10, 46, 22, 10); ctx.fill();
@@ -1685,7 +1744,8 @@
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 11px Fredoka, sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(h.type === "croc" ? "🐊 BUAYA" : "🐯 MACAN", cx, cy - 26);
+            const hLabel = { croc: "🐊 BUAYA", fireball: "🔥 BOLA API", skeleton: "💀 TENGKORAK" }[h.type] || "🐯 MACAN";
+            ctx.fillText(hLabel, cx, cy - (h.type === "skeleton" ? 34 : 28));
         }
 
         function render() {
