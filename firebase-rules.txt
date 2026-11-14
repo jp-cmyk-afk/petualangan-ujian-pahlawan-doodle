@@ -1,4 +1,4 @@
-ATURAN KEAMANAN FIREBASE (template, tes dulu di Rules Playground sebelum Publish)
+ATURAN KEAMANAN FIREBASE
 =====================================================================
 
 Game memakai Realtime Database terlebih dahulu. Jika tidak aktif, otomatis
@@ -55,7 +55,7 @@ service cloud.firestore {
 }
 
 ---------------------------------------------------------------------
-C) LANGKAH TAMBAHAN (wajib, dikerjakan di Google Cloud Console)
+C) LANGKAH TAMBAHAN (wajib dikerjakan di Google Cloud Console)
 ---------------------------------------------------------------------
 1. Google Cloud Console > APIs & Services > Credentials > pilih API key
    "AIzaSy...". Pada "Application restrictions" pilih "Websites" lalu isi
